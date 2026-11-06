@@ -69,7 +69,7 @@ export const AuthModal: React.FC<Props> = ({ onSuccess }) => {
       const user = await api.firebaseLogin(idToken, role);
       onSuccess(user);
     } catch (err: any) {
-      // If Firebase auth fails (e.g., auth domain restriction or offline), fallback gracefully to local backend auth
+      // If unauthorized-domain (e.g. browsing 127.0.0.1 instead of localhost) or network error, fallback directly to local backend auth
       try {
         let fallbackUser: UserType;
         if (isRegister) {
@@ -78,8 +78,14 @@ export const AuthModal: React.FC<Props> = ({ onSuccess }) => {
           fallbackUser = await api.login(email, password);
         }
         onSuccess(fallbackUser);
-      } catch {
-        setError(err.message || 'Authentication failed');
+      } catch (backendErr: any) {
+        if (err.code === 'auth/unauthorized-domain' || (err.message && err.message.includes('unauthorized-domain'))) {
+          setError(
+            "Firebase domain restriction: Please open the app via http://localhost:8000 instead of 127.0.0.1 (Firebase whitelists 'localhost' by default)."
+          );
+        } else {
+          setError(backendErr.message || err.message || 'Authentication failed');
+        }
       }
     } finally {
       setLoading(false);
@@ -122,6 +128,21 @@ export const AuthModal: React.FC<Props> = ({ onSuccess }) => {
 
         {/* Firebase Authentication Section */}
         <div className="p-6 space-y-4">
+          {window.location.hostname === '127.0.0.1' && (
+            <div className="p-3 bg-amber-50 border border-amber-300 rounded text-xs text-amber-950 space-y-1">
+              <span className="font-semibold block">⚠️ Firebase Domain Notice:</span>
+              <span>
+                You are on <code className="bg-amber-100 px-1 py-0.5 rounded">127.0.0.1</code>. Firebase requires <code className="bg-amber-100 px-1 py-0.5 rounded">localhost</code> for Google Sign-In.{' '}
+                <a
+                  href={`http://localhost:${window.location.port || '8000'}`}
+                  className="font-bold underline text-[#0F5C5A] hover:text-teal-900"
+                >
+                  Click here to switch to http://localhost:{window.location.port || '8000'}
+                </a>
+              </span>
+            </div>
+          )}
+
           <div className="space-y-3">
             <button
               onClick={handleGoogleSignIn}
