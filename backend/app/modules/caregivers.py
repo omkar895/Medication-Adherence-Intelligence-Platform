@@ -55,6 +55,7 @@ def create_caregiver_invitation(
         expires_at=now + datetime.timedelta(days=7),
     )
     db.add(invitation)
+    db.flush()
 
     audit = AuditEvent(
         actor_id=current_user.id,
@@ -120,7 +121,10 @@ def accept_caregiver_invitation(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="This invitation has already been used",
         )
-    if invitation.expires_at < now:
+    exp_at = invitation.expires_at
+    if exp_at.tzinfo is None:
+        exp_at = exp_at.replace(tzinfo=datetime.timezone.utc)
+    if exp_at < now:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="This invitation has expired",
@@ -160,6 +164,7 @@ def accept_caregiver_invitation(
         revoked_at=None,
     )
     db.add(grant)
+    db.flush()
 
     audit = AuditEvent(
         actor_id=current_user.id,
@@ -404,29 +409,58 @@ def revoke_consent(
     )
 
 
-@router.delete("/consent/{consent_id}")
-def delete_consent_and_remove_caregiver(
-    consent_id: str,
+@router.delete("/invitations/{invitation_id}")
+@router.delete("/caregivers/invitations/{invitation_id}")
+def cancel_pending_invitation(
+    invitation_id: str,
     current_user: User = Depends(require_patient),
     db: Session = Depends(get_db),
 ):
-    grant = (
+    """
+    Allows a patient to cancel a pending invitation code.
+    """
+    inv = db.query(Invitation).filter(Invitation.id == invitation_id).first()
+    if not inv:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invitation not found")
+    rel = db.query(CareRelationship).filter(CareRelationship.id == inv.relationship_id).first()
+    if not rel or rel.patient_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to cancel this invitation")
+
+    db.delete(inv)
+    db.delete(rel)
+    db.commit()
+    return {"status": "success", "message": "Pending invitation cancelled successfully."}
+
+
+@router.delete("/caregiver/patients/{patient_id}")
+def caregiver_disconnect_patient(
+    patient_id: str,
+    current_user: User = Depends(require_caregiver),
+    db: Session = Depends(get_db),
+):
+    """
+    Allows a caregiver to cleanly disconnect from a patient relationship.
+    Revokes the consent grant and removes the relationship.
+    """
+    grants = (
         db.query(ConsentGrant)
-        .filter(ConsentGrant.id == consent_id, ConsentGrant.patient_id == current_user.id)
+        .filter(ConsentGrant.patient_id == patient_id, ConsentGrant.caregiver_id == current_user.id)
+        .all()
+    )
+    now = datetime.datetime.now(datetime.timezone.utc)
+    for g in grants:
+        g.revoked_at = now
+
+    rel = (
+        db.query(CareRelationship)
+        .filter(CareRelationship.patient_id == patient_id, CareRelationship.caregiver_id == current_user.id)
         .first()
     )
-    if not grant:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Consent grant not found")
+    if rel:
+        db.delete(rel)
 
-    # Sever care relationship
-    db.query(CareRelationship).filter(
-        CareRelationship.patient_id == grant.patient_id,
-        CareRelationship.caregiver_id == grant.caregiver_id,
-    ).delete(synchronize_session=False)
-
-    db.delete(grant)
     db.commit()
-    return {"status": "success", "message": "Caregiver disconnected and removed completely."}
+    return {"status": "success", "message": "Successfully disconnected from patient."}
 
 
 @router.get("/caregiver-notifications", response_model=list[CaregiverNotificationRead])

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User, HeartHandshake, LogIn, ExternalLink, ShieldAlert } from 'lucide-react';
+import { User, HeartHandshake, LogIn, ExternalLink, ShieldAlert, Sun, Moon } from 'lucide-react';
 import { api, User as UserType } from '../services/api';
 import {
   auth,
@@ -21,6 +21,21 @@ export const AuthModal: React.FC<Props> = ({ onSuccess }) => {
   const [role, setRole] = useState<'patient' | 'caregiver'>('patient');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isDark, setIsDark] = useState<boolean>(() => {
+    return localStorage.getItem('maip_theme') === 'dark';
+  });
+
+  const toggleTheme = () => {
+    const next = !isDark;
+    setIsDark(next);
+    if (next) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('maip_theme', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('maip_theme', 'light');
+    }
+  };
 
   const isIpAddress = window.location.hostname === '127.0.0.1';
 
@@ -112,7 +127,15 @@ export const AuthModal: React.FC<Props> = ({ onSuccess }) => {
     <div className="min-h-screen bg-[#F7F5F0] dark:bg-[#121416] flex items-center justify-center p-4">
       <div className="max-w-md w-full bg-white dark:bg-[#1E2226] border border-[#D9D5CA] dark:border-[#2E363D] rounded-md shadow-xl overflow-hidden">
         {/* Banner */}
-        <div className="bg-[#0F5C5A] dark:bg-[#0A4240] p-6 text-white text-center space-y-1">
+        <div className="relative bg-[#0F5C5A] dark:bg-[#0A4240] p-6 text-white text-center space-y-1">
+          <button
+            type="button"
+            onClick={toggleTheme}
+            className="absolute top-4 right-4 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
+            title={`Switch to ${isDark ? 'Light' : 'Dark'} mode`}
+          >
+            {isDark ? <Sun className="w-4 h-4 text-amber-300" /> : <Moon className="w-4 h-4" />}
+          </button>
           <h1 className="text-xl font-bold tracking-tight">MAIP</h1>
           <p className="text-xs text-teal-100 uppercase tracking-wider font-semibold">
             Medication Adherence Intelligence Platform

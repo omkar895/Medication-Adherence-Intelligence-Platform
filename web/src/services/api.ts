@@ -458,6 +458,18 @@ export const api = {
     });
   },
 
+  async cancelInvitation(invitationId: string): Promise<{ status: string; message: string }> {
+    return request<{ status: string; message: string }>(`/api/v1/invitations/${invitationId}`, {
+      method: 'DELETE',
+    });
+  },
+
+  async caregiverDisconnectPatient(patientId: string): Promise<{ status: string; message: string }> {
+    return request<{ status: string; message: string }>(`/api/v1/caregiver/patients/${patientId}`, {
+      method: 'DELETE',
+    });
+  },
+
   async getCaregiverNotifications(): Promise<any[]> {
     return request('/api/v1/caregiver-notifications');
   },

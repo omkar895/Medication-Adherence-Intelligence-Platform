@@ -100,6 +100,17 @@ export const CaregiversConsent: React.FC<Props> = ({ consents, pendingInvitation
     }
   };
 
+  const handleCancelInvitation = async (invitationId: string) => {
+    if (window.confirm('Cancel this pending invitation code?')) {
+      try {
+        await api.cancelInvitation(invitationId);
+        onRefresh();
+      } catch (err: any) {
+        alert(err.message);
+      }
+    }
+  };
+
   const handleCopy = (code: string) => {
     navigator.clipboard.writeText(code);
     setCopiedCode(true);
@@ -233,9 +244,18 @@ export const CaregiversConsent: React.FC<Props> = ({ consents, pendingInvitation
                     Expires: {new Date(inv.expires_at).toLocaleDateString()}
                   </div>
                 </div>
-                <span className="px-2.5 py-1 bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 rounded font-medium border border-amber-300 dark:border-amber-700">
-                  Awaiting Acceptance
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="px-2.5 py-1 bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 rounded font-medium border border-amber-300 dark:border-amber-700">
+                    Awaiting Acceptance
+                  </span>
+                  <button
+                    onClick={() => handleCancelInvitation(inv.invitation_id)}
+                    title="Cancel invitation"
+                    className="p-1 hover:bg-rose-100 dark:hover:bg-rose-950/50 text-rose-600 dark:text-rose-400 rounded transition-colors"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
             ))}
           </div>

@@ -229,6 +229,63 @@ def test_caregiver_scoped_consent_and_immediate_revocation():
     assert shared_after_revoke.status_code == 403
     assert "Access ended or not granted" in shared_after_revoke.json()["detail"]
 
+
+def test_caregiver_disconnect_and_invitation_lifecycle():
+    """
+    Verify creating an invite with WhatsApp link, cancelling the pending invite,
+    and caregiver disconnecting from a patient relationship.
+    """
+    pt_login = client.post("/api/v1/auth/login", json={
+        "email": "patient.demo@maip.local",
+        "password": "Password123!"
+    })
+    pt_token = pt_login.json()["access_token"]
+    pt_headers = {"Authorization": f"Bearer {pt_token}"}
+
+    cg_login = client.post("/api/v1/auth/login", json={
+        "email": "caregiver.demo@maip.local",
+        "password": "Password123!"
+    })
+    cg_token = cg_login.json()["access_token"]
+    cg_headers = {"Authorization": f"Bearer {cg_token}"}
+
+    # 1. Create an invitation with phone contact
+    invite_res = client.post("/api/v1/caregivers/invitations", json={
+        "contact": "+919876543210",
+        "scopes": ["medication_names", "schedule_summary", "dose_status_summary", "dose_history", "adherence_dashboard", "notifications"]
+    }, headers=pt_headers)
+    assert invite_res.status_code == 200
+    invite_data = invite_res.json()
+    assert "whatsapp_link" in invite_data
+    assert "wa.me" in invite_data["whatsapp_link"]
+    inv_id = invite_data["invitation_id"]
+
+    # 2. Cancel the pending invitation
+    cancel_res = client.delete(f"/api/v1/caregivers/invitations/{inv_id}", headers=pt_headers)
+    assert cancel_res.status_code == 200
+    assert cancel_res.json()["status"] == "success"
+
+    # 3. Create another invite and accept it
+    invite2 = client.post("/api/v1/caregivers/invitations", json={
+        "contact": "+919999999999",
+        "scopes": ["medication_names", "dose_status_summary"]
+    }, headers=pt_headers).json()
+    token2 = invite2.get("invite_token") or invite2.get("raw_token")
+
+    accept_res = client.post("/api/v1/caregivers/invitations/accept", json={"token": token2}, headers=cg_headers)
+    assert accept_res.status_code == 200
+    patient_id = accept_res.json()["patient_id"]
+
+    # 4. Caregiver disconnects from patient
+    disc_res = client.delete(f"/api/v1/caregiver/patients/{patient_id}", headers=cg_headers)
+    assert disc_res.status_code == 200
+    assert disc_res.json()["status"] == "success"
+
+    # Check that access is now severed
+    shared_check = client.get(f"/api/v1/shared/patients/{patient_id}/medications", headers=cg_headers)
+    assert shared_check.status_code == 403
+
+
 def test_clinical_safety_copy_lint():
     """
     T-65 / Safety Guardrail:
