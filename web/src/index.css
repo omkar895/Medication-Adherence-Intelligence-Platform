@@ -14,15 +14,63 @@
     --color-status-snoozed: #3B4A8A;
   }
 
+  .dark {
+    --color-paper: #121416;
+    --color-surface: #1E2226;
+    --color-ink: #ECEFF1;
+    --color-ink-muted: #9EABB5;
+    --color-rule: #2E363D;
+    --color-accent: #1EB8B4;
+    --color-status-taken: #2FA85C;
+    --color-status-not-taken: #C94A4A;
+    --color-status-unresolved: #D4A017;
+    --color-status-snoozed: #5C72D6;
+  }
+
+  html {
+    font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    font-size: 16px;
+  }
+
+  html.text-size-large {
+    font-size: 18px;
+  }
+
+  html.text-size-xlarge {
+    font-size: 20px;
+  }
+
   body {
     background-color: var(--color-paper);
     color: var(--color-ink);
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    -webkit-font-smoothing: antialiased;
     min-height: 100vh;
   }
 
   .font-mono-numbers {
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    font-family: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* 3px Focus Ring for Accessibility */
+  :focus-visible {
+    outline: 3px solid #0F5C5A;
+    outline-offset: 2px;
+  }
+
+  .dark :focus-visible {
+    outline-color: #1EB8B4;
+  }
+
+  /* Respect prefers-reduced-motion per design spec */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    ::before,
+    ::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 }

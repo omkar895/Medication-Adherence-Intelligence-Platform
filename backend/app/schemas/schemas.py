@@ -63,6 +63,11 @@ class MedicationUpdate(BaseModel):
     notes: str | None = None
     active: bool | None = None
 
+class ScheduleVersionCreate(BaseModel):
+    dose_times: list[str]
+    frequency_type: str = "daily"
+    frequency_days: list[str] | None = None
+
 class ScheduleVersionRead(BaseModel):
     id: str
     medication_id: str

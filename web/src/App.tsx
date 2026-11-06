@@ -7,7 +7,9 @@ import {
   User as UserIcon,
   LogOut,
   ArrowRightLeft,
-  RefreshCw,
+  FileText,
+  Moon,
+  Sun,
 } from 'lucide-react';
 import {
   User,
@@ -25,6 +27,7 @@ import { AuthModal } from './components/AuthModal';
 import { firebaseSignOut, auth } from './services/firebase';
 import { TodayLedger } from './components/TodayLedger';
 import { MedicationList } from './components/MedicationList';
+import { HistoryPage } from './components/HistoryPage';
 import { InsightsDashboard } from './components/InsightsDashboard';
 import { CaregiversConsent } from './components/CaregiversConsent';
 import { CaregiverPortal } from './components/CaregiverPortal';
@@ -33,7 +36,22 @@ import { SyntheticBanner, ClinicalSafetyFooter, SyncStatusBar } from './componen
 
 export function App() {
   const [user, setUser] = useState<User | null>(getStoredUser());
-  const [activeTab, setActiveTab] = useState<'today' | 'medications' | 'insights' | 'caregivers' | 'profile'>('today');
+  const [activeTab, setActiveTab] = useState<'today' | 'medications' | 'history' | 'insights' | 'caregivers' | 'profile'>('today');
+
+  // Dark Mode
+  const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
+    return localStorage.getItem('maip_theme') === 'dark';
+  });
+
+  useEffect(() => {
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('maip_theme', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('maip_theme', 'light');
+    }
+  }, [isDarkMode]);
 
   // Network & Sync state
   const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
@@ -154,7 +172,7 @@ export function App() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#F7F5F0]">
+    <div className="min-h-screen flex flex-col bg-[#F7F5F0] dark:bg-[#121416] text-[#1B1F23] dark:text-[#ECEFF1] transition-colors pb-16 sm:pb-0">
       {/* Top Banner: Synthetic Demo Disclosure */}
       <SyntheticBanner />
 
@@ -166,31 +184,40 @@ export function App() {
       />
 
       {/* Main App Navigation Bar */}
-      <header className="bg-white border-b border-[#D9D5CA] px-4 py-3 sticky top-0 z-40">
+      <header className="bg-white dark:bg-[#1E2226] border-b border-[#D9D5CA] dark:border-[#2E363D] px-4 py-3 sticky top-0 z-40">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded bg-[#0F5C5A] text-white flex items-center justify-center font-bold text-sm">
+            <div className="w-8 h-8 rounded bg-[#0F5C5A] dark:bg-[#1EB8B4] text-white dark:text-[#121416] flex items-center justify-center font-bold text-sm">
               M
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="font-semibold text-base text-[#1B1F23]">MAIP</span>
-                <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.2 rounded bg-neutral-100 text-[#4A5159] border border-neutral-300">
+                <span className="font-semibold text-base text-[#1B1F23] dark:text-[#ECEFF1]">MAIP</span>
+                <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.2 rounded bg-neutral-100 dark:bg-neutral-800 text-[#4A5159] dark:text-[#9EABB5] border border-neutral-300 dark:border-neutral-700">
                   {user.role}
                 </span>
               </div>
-              <div className="text-xs text-[#4A5159]">
+              <div className="text-xs text-[#4A5159] dark:text-[#9EABB5]">
                 {user.display_name}
               </div>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Theme Toggle */}
+            <button
+              onClick={() => setIsDarkMode(!isDarkMode)}
+              title={`Switch to ${isDarkMode ? 'Light' : 'Dark'} mode`}
+              className="p-1.5 text-[#4A5159] dark:text-[#9EABB5] hover:text-[#1B1F23] dark:hover:text-[#ECEFF1] rounded border border-neutral-200 dark:border-neutral-700"
+            >
+              {isDarkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-[#0F5C5A]" />}
+            </button>
+
             {/* 1-Click Role Switch for Demo Convenience */}
             <button
               onClick={() => handleSwitchRole(user.role === 'patient' ? 'caregiver' : 'patient')}
               title={`Switch to ${user.role === 'patient' ? 'Caregiver' : 'Patient'} view`}
-              className="px-2.5 py-1.5 bg-[#F7F5F0] hover:bg-neutral-200 border border-[#D9D5CA] text-xs font-medium text-[#0F5C5A] rounded flex items-center gap-1.5 transition-colors"
+              className="px-2.5 py-1.5 bg-[#F7F5F0] dark:bg-[#252A2F] hover:bg-neutral-200 dark:hover:bg-neutral-700 border border-[#D9D5CA] dark:border-[#2E363D] text-xs font-medium text-[#0F5C5A] dark:text-[#1EB8B4] rounded flex items-center gap-1.5 transition-colors"
             >
               <ArrowRightLeft className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Switch to</span> {user.role === 'patient' ? 'Caregiver' : 'Patient'}
@@ -199,22 +226,22 @@ export function App() {
             <button
               onClick={handleLogout}
               title="Log out"
-              className="p-1.5 text-[#4A5159] hover:text-[#1B1F23] rounded border border-neutral-200"
+              className="p-1.5 text-[#4A5159] dark:text-[#9EABB5] hover:text-[#1B1F23] dark:hover:text-[#ECEFF1] rounded border border-neutral-200 dark:border-neutral-700"
             >
               <LogOut className="w-4 h-4" />
             </button>
           </div>
         </div>
 
-        {/* Tab Navigation (for Patient) */}
+        {/* Desktop/Tablet Tab Navigation (for Patient) */}
         {user.role === 'patient' && (
-          <div className="max-w-4xl mx-auto mt-3 flex items-center gap-1 overflow-x-auto border-t border-neutral-100 pt-2">
+          <div className="hidden sm:flex max-w-4xl mx-auto mt-3 items-center gap-1 overflow-x-auto border-t border-neutral-100 dark:border-[#2E363D] pt-2">
             <button
               onClick={() => setActiveTab('today')}
               className={`px-3 py-1.5 rounded text-xs font-semibold flex items-center gap-1.5 whitespace-nowrap transition-colors ${
                 activeTab === 'today'
-                  ? 'bg-[#0F5C5A] text-white'
-                  : 'text-[#4A5159] hover:bg-[#F7F5F0]'
+                  ? 'bg-[#0F5C5A] dark:bg-[#1EB8B4] text-white dark:text-[#121416]'
+                  : 'text-[#4A5159] dark:text-[#9EABB5] hover:bg-[#F7F5F0] dark:hover:bg-[#252A2F]'
               }`}
             >
               <Calendar className="w-3.5 h-3.5" /> Today's Ledger
@@ -224,19 +251,30 @@ export function App() {
               onClick={() => setActiveTab('medications')}
               className={`px-3 py-1.5 rounded text-xs font-semibold flex items-center gap-1.5 whitespace-nowrap transition-colors ${
                 activeTab === 'medications'
-                  ? 'bg-[#0F5C5A] text-white'
-                  : 'text-[#4A5159] hover:bg-[#F7F5F0]'
+                  ? 'bg-[#0F5C5A] dark:bg-[#1EB8B4] text-white dark:text-[#121416]'
+                  : 'text-[#4A5159] dark:text-[#9EABB5] hover:bg-[#F7F5F0] dark:hover:bg-[#252A2F]'
               }`}
             >
               <Pill className="w-3.5 h-3.5" /> Medications
             </button>
 
             <button
+              onClick={() => setActiveTab('history')}
+              className={`px-3 py-1.5 rounded text-xs font-semibold flex items-center gap-1.5 whitespace-nowrap transition-colors ${
+                activeTab === 'history'
+                  ? 'bg-[#0F5C5A] dark:bg-[#1EB8B4] text-white dark:text-[#121416]'
+                  : 'text-[#4A5159] dark:text-[#9EABB5] hover:bg-[#F7F5F0] dark:hover:bg-[#252A2F]'
+              }`}
+            >
+              <FileText className="w-3.5 h-3.5" /> Dose History
+            </button>
+
+            <button
               onClick={() => setActiveTab('insights')}
               className={`px-3 py-1.5 rounded text-xs font-semibold flex items-center gap-1.5 whitespace-nowrap transition-colors ${
                 activeTab === 'insights'
-                  ? 'bg-[#0F5C5A] text-white'
-                  : 'text-[#4A5159] hover:bg-[#F7F5F0]'
+                  ? 'bg-[#0F5C5A] dark:bg-[#1EB8B4] text-white dark:text-[#121416]'
+                  : 'text-[#4A5159] dark:text-[#9EABB5] hover:bg-[#F7F5F0] dark:hover:bg-[#252A2F]'
               }`}
             >
               <BarChart3 className="w-3.5 h-3.5" /> Insights & Metrics
@@ -246,8 +284,8 @@ export function App() {
               onClick={() => setActiveTab('caregivers')}
               className={`px-3 py-1.5 rounded text-xs font-semibold flex items-center gap-1.5 whitespace-nowrap transition-colors ${
                 activeTab === 'caregivers'
-                  ? 'bg-[#0F5C5A] text-white'
-                  : 'text-[#4A5159] hover:bg-[#F7F5F0]'
+                  ? 'bg-[#0F5C5A] dark:bg-[#1EB8B4] text-white dark:text-[#121416]'
+                  : 'text-[#4A5159] dark:text-[#9EABB5] hover:bg-[#F7F5F0] dark:hover:bg-[#252A2F]'
               }`}
             >
               <Users className="w-3.5 h-3.5" /> Caregivers & Consent
@@ -257,8 +295,8 @@ export function App() {
               onClick={() => setActiveTab('profile')}
               className={`px-3 py-1.5 rounded text-xs font-semibold flex items-center gap-1.5 whitespace-nowrap transition-colors ${
                 activeTab === 'profile'
-                  ? 'bg-[#0F5C5A] text-white'
-                  : 'text-[#4A5159] hover:bg-[#F7F5F0]'
+                  ? 'bg-[#0F5C5A] dark:bg-[#1EB8B4] text-white dark:text-[#121416]'
+                  : 'text-[#4A5159] dark:text-[#9EABB5] hover:bg-[#F7F5F0] dark:hover:bg-[#252A2F]'
               }`}
             >
               <UserIcon className="w-3.5 h-3.5" /> Settings
@@ -288,6 +326,12 @@ export function App() {
               />
             )}
 
+            {activeTab === 'history' && (
+              <HistoryPage
+                medications={medications}
+              />
+            )}
+
             {activeTab === 'insights' && (
               <InsightsDashboard
                 insights={insights}
@@ -307,6 +351,8 @@ export function App() {
               <ProfileSettings
                 user={user}
                 onLogout={handleLogout}
+                isDarkMode={isDarkMode}
+                onToggleDarkMode={() => setIsDarkMode(!isDarkMode)}
               />
             )}
           </>
@@ -315,6 +361,71 @@ export function App() {
         {/* Clinical Safety Disclaimer Footer */}
         <ClinicalSafetyFooter />
       </main>
+
+      {/* Mobile Bottom Navigation (per 04-design.md) */}
+      {user.role === 'patient' && (
+        <nav className="sm:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-[#1E2226] border-t border-[#D9D5CA] dark:border-[#2E363D] z-40 px-2 py-1.5 flex items-center justify-around shadow-lg">
+          <button
+            onClick={() => setActiveTab('today')}
+            className={`flex flex-col items-center py-1 px-2 rounded text-[10px] font-medium transition-colors ${
+              activeTab === 'today' ? 'text-[#0F5C5A] dark:text-[#1EB8B4]' : 'text-[#4A5159] dark:text-[#9EABB5]'
+            }`}
+          >
+            <Calendar className="w-5 h-5 mb-0.5" />
+            <span>Today</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('medications')}
+            className={`flex flex-col items-center py-1 px-2 rounded text-[10px] font-medium transition-colors ${
+              activeTab === 'medications' ? 'text-[#0F5C5A] dark:text-[#1EB8B4]' : 'text-[#4A5159] dark:text-[#9EABB5]'
+            }`}
+          >
+            <Pill className="w-5 h-5 mb-0.5" />
+            <span>Meds</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('history')}
+            className={`flex flex-col items-center py-1 px-2 rounded text-[10px] font-medium transition-colors ${
+              activeTab === 'history' ? 'text-[#0F5C5A] dark:text-[#1EB8B4]' : 'text-[#4A5159] dark:text-[#9EABB5]'
+            }`}
+          >
+            <FileText className="w-5 h-5 mb-0.5" />
+            <span>History</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('insights')}
+            className={`flex flex-col items-center py-1 px-2 rounded text-[10px] font-medium transition-colors ${
+              activeTab === 'insights' ? 'text-[#0F5C5A] dark:text-[#1EB8B4]' : 'text-[#4A5159] dark:text-[#9EABB5]'
+            }`}
+          >
+            <BarChart3 className="w-5 h-5 mb-0.5" />
+            <span>Insights</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('caregivers')}
+            className={`flex flex-col items-center py-1 px-2 rounded text-[10px] font-medium transition-colors ${
+              activeTab === 'caregivers' ? 'text-[#0F5C5A] dark:text-[#1EB8B4]' : 'text-[#4A5159] dark:text-[#9EABB5]'
+            }`}
+          >
+            <Users className="w-5 h-5 mb-0.5" />
+            <span>Share</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('profile')}
+            className={`flex flex-col items-center py-1 px-2 rounded text-[10px] font-medium transition-colors ${
+              activeTab === 'profile' ? 'text-[#0F5C5A] dark:text-[#1EB8B4]' : 'text-[#4A5159] dark:text-[#9EABB5]'
+            }`}
+          >
+            <UserIcon className="w-5 h-5 mb-0.5" />
+            <span>Settings</span>
+          </button>
+        </nav>
+      )}
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { UserPlus, ShieldAlert, Check, X, Key, AlertTriangle, ShieldCheck } from 'lucide-react';
+import { UserPlus, ShieldAlert, Check, X, Key, AlertTriangle, ShieldCheck, Copy } from 'lucide-react';
 import { ConsentGrant, api } from '../services/api';
 
 interface Props {
@@ -10,7 +10,7 @@ interface Props {
 
 const AVAILABLE_SCOPES = [
   { id: 'medication_names', label: 'Medication Names', desc: 'Allows caregiver to see names and forms of active medicines.' },
-  { id: 'schedule_summary', label: 'Schedule Summary', desc: 'Allows caregiver to see times of day and days of week.' },
+  { id: 'schedule_summary', label: 'Schedule Summary', desc: 'Allows caregiver to see times of day and frequency rules.' },
   { id: 'dose_status_summary', label: 'Today Dose Status', desc: "Allows caregiver to see today's Taken, Skipped, and Unresolved counts." },
   { id: 'dose_history', label: 'Dose History Ledger', desc: 'Allows caregiver to inspect chronological dose records.' },
   { id: 'adherence_dashboard', label: 'Adherence Dashboard', desc: 'Allows caregiver to see aggregate adherence percentages with denominators.' },
@@ -30,6 +30,7 @@ export const CaregiversConsent: React.FC<Props> = ({ consents, pendingInvitation
   ]);
   const [generatedInvite, setGeneratedInvite] = useState<any | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [copiedCode, setCopiedCode] = useState(false);
 
   const toggleScope = (scopeId: string) => {
     if (selectedScopes.includes(scopeId)) {
@@ -54,7 +55,11 @@ export const CaregiversConsent: React.FC<Props> = ({ consents, pendingInvitation
   };
 
   const handleRevoke = async (consentId: string) => {
-    if (window.confirm('Are you sure you want to revoke this caregiver’s access? Server-side access will cease immediately.')) {
+    if (
+      window.confirm(
+        'Are you sure you want to revoke this caregiver’s access? Server-side access will cease immediately.'
+      )
+    ) {
       try {
         await api.revokeConsent(consentId);
         onRefresh();
@@ -64,14 +69,20 @@ export const CaregiversConsent: React.FC<Props> = ({ consents, pendingInvitation
     }
   };
 
+  const handleCopy = (code: string) => {
+    navigator.clipboard.writeText(code);
+    setCopiedCode(true);
+    setTimeout(() => setCopiedCode(false), 3000);
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h2 className="text-xl font-semibold text-[#1B1F23]">Caregiver Sharing & Consent</h2>
-          <p className="text-xs text-[#4A5159] mt-0.5">
-            You have full control. Access is opt-in, granular, and can be revoked at any time.
+          <h2 className="text-xl font-bold text-[#1B1F23] dark:text-[#ECEFF1]">Caregiver Sharing & Consent</h2>
+          <p className="text-xs text-[#4A5159] dark:text-[#9EABB5] mt-0.5">
+            You maintain full sovereignty. Access is opt-in, granular, and can be revoked at any time.
           </p>
         </div>
 
@@ -80,7 +91,7 @@ export const CaregiversConsent: React.FC<Props> = ({ consents, pendingInvitation
             setShowInviteModal(true);
             setGeneratedInvite(null);
           }}
-          className="h-10 px-4 bg-[#0F5C5A] hover:bg-teal-900 text-white rounded text-sm font-medium flex items-center gap-1.5 shadow-sm"
+          className="h-10 px-4 bg-[#0F5C5A] dark:bg-[#1EB8B4] hover:bg-teal-900 text-white dark:text-[#121416] rounded text-sm font-semibold flex items-center justify-center gap-1.5 shadow-xs transition-colors self-start sm:self-auto"
         >
           <UserPlus className="w-4 h-4" /> Invite Caregiver
         </button>
@@ -88,39 +99,39 @@ export const CaregiversConsent: React.FC<Props> = ({ consents, pendingInvitation
 
       {/* Active Caregiver Grants */}
       <div className="space-y-4">
-        <h3 className="text-xs font-bold uppercase tracking-wider text-[#4A5159]">
+        <h3 className="text-xs font-bold uppercase tracking-wider text-[#4A5159] dark:text-[#9EABB5]">
           Active Consent Grants
         </h3>
 
         {consents.length === 0 ? (
-          <div className="bg-white border border-[#D9D5CA] rounded p-6 text-center text-[#4A5159] text-xs">
+          <div className="bg-white dark:bg-[#1E2226] border border-[#D9D5CA] dark:border-[#2E363D] rounded p-8 text-center text-[#4A5159] dark:text-[#9EABB5] text-xs">
             No caregivers connected. Sharing is currently completely off.
           </div>
         ) : (
           consents.map((g) => (
             <div
               key={g.id}
-              className={`bg-white border rounded-md p-5 space-y-4 ${
-                g.revoked_at ? 'border-neutral-300 opacity-60' : 'border-[#D9D5CA]'
+              className={`bg-white dark:bg-[#1E2226] border rounded-md p-5 space-y-4 ${
+                g.revoked_at ? 'border-neutral-300 dark:border-neutral-700 opacity-60' : 'border-[#D9D5CA] dark:border-[#2E363D]'
               }`}
             >
               <div className="flex items-start justify-between">
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="font-semibold text-base text-[#1B1F23]">
+                    <span className="font-semibold text-base text-[#1B1F23] dark:text-[#ECEFF1]">
                       {g.caregiver_name || 'Caregiver'}
                     </span>
                     {g.revoked_at ? (
-                      <span className="px-2 py-0.5 bg-rose-100 text-rose-800 text-[10px] font-bold uppercase rounded">
+                      <span className="px-2 py-0.5 bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-300 text-[10px] font-bold uppercase rounded">
                         Access Revoked
                       </span>
                     ) : (
-                      <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-bold uppercase rounded flex items-center gap-1">
+                      <span className="px-2 py-0.5 bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 text-[10px] font-bold uppercase rounded flex items-center gap-1">
                         <ShieldCheck className="w-3 h-3" /> Active Grant
                       </span>
                     )}
                   </div>
-                  <div className="text-xs text-[#4A5159] mt-1">
+                  <div className="text-xs text-[#4A5159] dark:text-[#9EABB5] mt-1">
                     Granted: {new Date(g.granted_at).toLocaleDateString()}
                   </div>
                 </div>
@@ -128,7 +139,7 @@ export const CaregiversConsent: React.FC<Props> = ({ consents, pendingInvitation
                 {!g.revoked_at && (
                   <button
                     onClick={() => handleRevoke(g.id)}
-                    className="px-3 py-1.5 bg-rose-50 border border-rose-300 text-rose-800 hover:bg-rose-100 rounded text-xs font-medium transition-colors"
+                    className="px-3 py-1.5 bg-rose-50 dark:bg-rose-950/40 border border-rose-300 dark:border-rose-800 text-rose-800 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-900/60 rounded text-xs font-semibold transition-colors"
                   >
                     Revoke Access Immediately
                   </button>
@@ -136,15 +147,15 @@ export const CaregiversConsent: React.FC<Props> = ({ consents, pendingInvitation
               </div>
 
               {/* Scopes display */}
-              <div className="border-t border-[#D9D5CA] pt-3">
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-[#4A5159] block mb-2">
+              <div className="border-t border-[#D9D5CA] dark:border-[#2E363D] pt-3">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-[#4A5159] dark:text-[#9EABB5] block mb-2">
                   Permitted Scopes:
                 </span>
                 <div className="flex flex-wrap gap-2">
                   {g.scopes.map((s) => (
                     <span
                       key={s}
-                      className="px-2.5 py-1 bg-[#F7F5F0] border border-[#D9D5CA] rounded text-xs text-neutral-800 capitalize"
+                      className="px-2.5 py-1 bg-[#F7F5F0] dark:bg-[#121416] border border-[#D9D5CA] dark:border-[#2E363D] rounded text-xs text-neutral-800 dark:text-neutral-200 capitalize font-medium"
                     >
                       {s.replace(/_/g, ' ')}
                     </span>
@@ -159,21 +170,28 @@ export const CaregiversConsent: React.FC<Props> = ({ consents, pendingInvitation
       {/* Pending Invitations */}
       {pendingInvitations && pendingInvitations.length > 0 && (
         <div className="space-y-3">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-[#4A5159]">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-[#4A5159] dark:text-[#9EABB5]">
             Pending Invitation Codes
           </h3>
-          <div className="bg-white border border-[#D9D5CA] rounded divide-y divide-[#D9D5CA]">
+          <div className="bg-white dark:bg-[#1E2226] border border-[#D9D5CA] dark:border-[#2E363D] rounded divide-y divide-[#D9D5CA] dark:divide-[#2E363D]">
             {pendingInvitations.map((inv) => (
               <div key={inv.invitation_id} className="p-4 flex items-center justify-between text-xs">
                 <div>
-                  <div className="font-mono-numbers font-semibold text-sm text-[#0F5C5A]">
-                    {inv.raw_token}
+                  <div className="font-mono-numbers font-bold text-sm text-[#0F5C5A] dark:text-[#1EB8B4] flex items-center gap-2">
+                    <span>{inv.raw_token}</span>
+                    <button
+                      onClick={() => handleCopy(inv.raw_token)}
+                      title="Copy code"
+                      className="p-1 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded text-neutral-500"
+                    >
+                      <Copy className="w-3.5 h-3.5" />
+                    </button>
                   </div>
-                  <div className="text-[#4A5159] mt-0.5">
+                  <div className="text-[#4A5159] dark:text-[#9EABB5] mt-0.5">
                     Expires: {new Date(inv.expires_at).toLocaleDateString()}
                   </div>
                 </div>
-                <span className="px-2 py-0.5 bg-amber-100 text-amber-900 rounded font-medium">
+                <span className="px-2.5 py-1 bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 rounded font-medium border border-amber-300 dark:border-amber-700">
                   Awaiting Acceptance
                 </span>
               </div>
@@ -184,16 +202,16 @@ export const CaregiversConsent: React.FC<Props> = ({ consents, pendingInvitation
 
       {/* Invite Wizard Modal */}
       {showInviteModal && (
-        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
-          <div className="bg-white max-w-lg w-full rounded-md border border-[#D9D5CA] shadow-2xl overflow-hidden">
-            <div className="bg-[#F7F5F0] px-6 py-4 border-b border-[#D9D5CA] flex items-center justify-between">
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
+          <div className="bg-white dark:bg-[#1E2226] max-w-lg w-full rounded-md border border-[#D9D5CA] dark:border-[#2E363D] shadow-2xl overflow-hidden">
+            <div className="bg-[#F7F5F0] dark:bg-[#252A2F] px-6 py-4 border-b border-[#D9D5CA] dark:border-[#2E363D] flex items-center justify-between">
               <div>
-                <h3 className="text-lg font-semibold text-[#1B1F23]">Invite Caregiver</h3>
-                <p className="text-xs text-[#4A5159]">Specify recipient and permitted scopes</p>
+                <h3 className="text-lg font-semibold text-[#1B1F23] dark:text-[#ECEFF1]">Invite Caregiver</h3>
+                <p className="text-xs text-[#4A5159] dark:text-[#9EABB5]">Specify recipient contact and permitted scopes</p>
               </div>
               <button
                 onClick={() => setShowInviteModal(false)}
-                className="text-[#4A5159] hover:text-[#1B1F23] text-lg font-bold"
+                className="text-[#4A5159] dark:text-[#9EABB5] hover:text-[#1B1F23] text-lg font-bold"
               >
                 ×
               </button>
@@ -202,23 +220,29 @@ export const CaregiversConsent: React.FC<Props> = ({ consents, pendingInvitation
             <div className="p-6 space-y-4">
               {generatedInvite ? (
                 <div className="space-y-4">
-                  <div className="p-4 bg-emerald-50 border border-emerald-300 rounded text-center space-y-2">
-                    <Check className="w-8 h-8 mx-auto text-emerald-700" />
-                    <h4 className="font-semibold text-emerald-950">Invitation Created</h4>
-                    <p className="text-xs text-emerald-900">
+                  <div className="p-4 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-300 dark:border-emerald-700 rounded text-center space-y-2">
+                    <Check className="w-8 h-8 mx-auto text-emerald-700 dark:text-emerald-400" />
+                    <h4 className="font-semibold text-emerald-950 dark:text-emerald-100">Invitation Generated</h4>
+                    <p className="text-xs text-emerald-900 dark:text-emerald-300">
                       Share this single-use code with your family member or caregiver:
                     </p>
-                    <div className="p-3 bg-white border border-emerald-400 rounded font-mono font-bold text-lg text-emerald-950 select-all">
-                      {generatedInvite.invite_token}
+                    <div className="p-3 bg-white dark:bg-[#121416] border border-emerald-400 dark:border-emerald-700 rounded font-mono font-bold text-lg text-emerald-950 dark:text-emerald-200 select-all flex items-center justify-between">
+                      <span className="mx-auto">{generatedInvite.invite_token}</span>
+                      <button
+                        onClick={() => handleCopy(generatedInvite.invite_token)}
+                        className="text-xs text-emerald-700 dark:text-emerald-400 p-1 rounded hover:bg-emerald-50 dark:hover:bg-emerald-900/50"
+                      >
+                        {copiedCode ? 'Copied!' : <Copy className="w-4 h-4" />}
+                      </button>
                     </div>
-                    <p className="text-[11px] text-emerald-800">
-                      Expires in 7 days. They must log in to the Caregiver portal and enter this code to activate access.
+                    <p className="text-[11px] text-emerald-800 dark:text-emerald-400">
+                      Valid for 7 days. They can log in to the Caregiver Portal and enter this code to link access.
                     </p>
                   </div>
 
                   <button
                     onClick={() => setShowInviteModal(false)}
-                    className="w-full py-2 bg-[#0F5C5A] text-white rounded text-sm font-medium"
+                    className="w-full py-2 bg-[#0F5C5A] dark:bg-[#1EB8B4] text-white dark:text-[#121416] rounded text-sm font-semibold"
                   >
                     Done
                   </button>
@@ -226,7 +250,7 @@ export const CaregiversConsent: React.FC<Props> = ({ consents, pendingInvitation
               ) : (
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-xs font-semibold uppercase tracking-wider text-[#4A5159] mb-1">
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-[#4A5159] dark:text-[#9EABB5] mb-1">
                       Caregiver Email or Phone
                     </label>
                     <input
@@ -234,19 +258,19 @@ export const CaregiversConsent: React.FC<Props> = ({ consents, pendingInvitation
                       placeholder="e.g. rahul@example.com or +91..."
                       value={contact}
                       onChange={(e) => setContact(e.target.value)}
-                      className="w-full px-3 py-2 border border-[#D9D5CA] rounded text-sm focus:border-[#0F5C5A] focus:outline-none"
+                      className="w-full px-3 py-2 border border-[#D9D5CA] dark:border-[#2E363D] bg-white dark:bg-[#121416] text-[#1B1F23] dark:text-[#ECEFF1] rounded text-sm focus:outline-none"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold uppercase tracking-wider text-[#4A5159] mb-2">
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-[#4A5159] dark:text-[#9EABB5] mb-2">
                       Select Permitted Data Scopes:
                     </label>
                     <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
                       {AVAILABLE_SCOPES.map((scope) => (
                         <label
                           key={scope.id}
-                          className="flex items-start gap-2.5 p-2 bg-neutral-50 rounded border border-neutral-200 cursor-pointer hover:bg-neutral-100"
+                          className="flex items-start gap-2.5 p-2.5 bg-neutral-50 dark:bg-neutral-800/60 rounded border border-neutral-200 dark:border-neutral-700 cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-800"
                         >
                           <input
                             type="checkbox"
@@ -255,10 +279,10 @@ export const CaregiversConsent: React.FC<Props> = ({ consents, pendingInvitation
                             className="mt-1"
                           />
                           <div>
-                            <div className="text-xs font-semibold text-[#1B1F23]">
+                            <div className="text-xs font-semibold text-[#1B1F23] dark:text-[#ECEFF1]">
                               {scope.label}
                             </div>
-                            <div className="text-[11px] text-[#4A5159] leading-tight mt-0.5">
+                            <div className="text-[11px] text-[#4A5159] dark:text-[#9EABB5] leading-tight mt-0.5">
                               {scope.desc}
                             </div>
                           </div>
@@ -271,7 +295,7 @@ export const CaregiversConsent: React.FC<Props> = ({ consents, pendingInvitation
                     <button
                       onClick={handleCreateInvite}
                       disabled={submitting || !contact.trim() || selectedScopes.length === 0}
-                      className="w-full py-2.5 bg-[#0F5C5A] hover:bg-teal-900 text-white rounded text-sm font-medium shadow-sm disabled:opacity-50"
+                      className="w-full py-2.5 bg-[#0F5C5A] dark:bg-[#1EB8B4] hover:bg-teal-900 text-white dark:text-[#121416] rounded text-sm font-semibold shadow-xs disabled:opacity-50"
                     >
                       {submitting ? 'Generating Invitation…' : 'Generate Invitation Code'}
                     </button>
@@ -285,4 +309,3 @@ export const CaregiversConsent: React.FC<Props> = ({ consents, pendingInvitation
     </div>
   );
 };
-

@@ -75,6 +75,34 @@ export interface Insight {
   description: string;
 }
 
+export interface ScheduleVersion {
+  id: string;
+  medication_id: string;
+  frequency_rule: { type: string; days?: string[] };
+  dose_times: string[];
+  effective_from: string;
+  effective_to?: string | null;
+  timezone: string;
+  response_window_minutes: number;
+}
+
+export interface PatientProfile {
+  id: string;
+  user_id: string;
+  timezone: string;
+  reminder_preferences: {
+    quiet_hours_start?: string;
+    quiet_hours_end?: string;
+    snooze_interval_minutes?: number;
+    max_reminders_per_dose?: number;
+  };
+  accessibility_preferences: {
+    text_size?: 'standard' | 'large' | 'extra-large';
+    high_contrast?: boolean;
+    dark_mode?: boolean;
+  };
+}
+
 export interface ConsentGrant {
   id: string;
   patient_id: string;
@@ -234,12 +262,26 @@ export const api = {
     return request<DoseEvent[]>('/api/v1/dose-events/today');
   },
 
-  async listDoseEvents(params: { medication_id?: string; status_filter?: string; limit?: number } = {}): Promise<DoseEvent[]> {
+  async listDoseEvents(params: {
+    medication_id?: string;
+    status_filter?: string;
+    start_date?: string;
+    end_date?: string;
+    limit?: number;
+    offset?: number;
+  } = {}): Promise<DoseEvent[]> {
     const query = new URLSearchParams();
     if (params.medication_id) query.append('medication_id', params.medication_id);
     if (params.status_filter) query.append('status_filter', params.status_filter);
+    if (params.start_date) query.append('start_date', params.start_date);
+    if (params.end_date) query.append('end_date', params.end_date);
     if (params.limit) query.append('limit', params.limit.toString());
+    if (params.offset) query.append('offset', params.offset.toString());
     return request<DoseEvent[]>(`/api/v1/dose-events?${query.toString()}`);
+  },
+
+  async getDoseEvent(eventId: string): Promise<DoseEvent> {
+    return request<DoseEvent>(`/api/v1/dose-events/${eventId}`);
   },
 
   async recordDoseResponse(eventId: string, outcome: 'taken' | 'not_taken', idempotencyKey?: string): Promise<DoseEvent> {
@@ -300,6 +342,46 @@ export const api = {
 
   async archiveMedication(medicationId: string): Promise<Medication> {
     return request<Medication>(`/api/v1/medications/${medicationId}/archive`, {
+      method: 'POST',
+    });
+  },
+
+  async updateMedication(medicationId: string, data: Partial<Medication>): Promise<Medication> {
+    return request<Medication>(`/api/v1/medications/${medicationId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  },
+
+  async getMedicationSchedules(medicationId: string): Promise<ScheduleVersion[]> {
+    return request<ScheduleVersion[]>(`/api/v1/medications/${medicationId}/schedules`);
+  },
+
+  async updateMedicationSchedule(medicationId: string, data: { dose_times: string[]; frequency_type?: string; frequency_days?: string[] }): Promise<Medication> {
+    return request<Medication>(`/api/v1/medications/${medicationId}/schedules`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  // Patient Profile
+  async getProfile(): Promise<PatientProfile> {
+    return request<PatientProfile>('/api/v1/profile');
+  },
+
+  async updateProfile(data: {
+    timezone?: string;
+    reminder_preferences?: Record<string, any>;
+    accessibility_preferences?: Record<string, any>;
+  }): Promise<PatientProfile> {
+    return request<PatientProfile>('/api/v1/profile', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
+
+  async requestAccountDeletion() {
+    return request<{ message: string }>('/api/v1/profile/delete-request', {
       method: 'POST',
     });
   },

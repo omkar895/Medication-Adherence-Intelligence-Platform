@@ -9,6 +9,7 @@ from backend.app.schemas.schemas import (
     MedicationUpdate,
     MedicationRead,
     ScheduleVersionRead,
+    ScheduleVersionCreate,
 )
 from backend.app.services.generator import generate_events_for_schedule
 
@@ -204,4 +205,97 @@ def archive_medication(
         .first()
     )
     return map_medication_read(med, sched)
+
+
+@router.get("/{medication_id}/schedules", response_model=list[ScheduleVersionRead])
+def get_medication_schedules(
+    medication_id: str,
+    current_user: User = Depends(require_patient),
+    db: Session = Depends(get_db),
+):
+    med = (
+        db.query(Medication)
+        .filter(Medication.id == medication_id, Medication.patient_id == current_user.id)
+        .first()
+    )
+    if not med:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Medication not found")
+
+    schedules = (
+        db.query(ScheduleVersion)
+        .filter(ScheduleVersion.medication_id == med.id)
+        .order_by(ScheduleVersion.effective_from.desc())
+        .all()
+    )
+    return [
+        ScheduleVersionRead(
+            id=s.id,
+            medication_id=s.medication_id,
+            frequency_rule=s.frequency_rule,
+            dose_times=s.dose_times,
+            effective_from=s.effective_from,
+            effective_to=s.effective_to,
+            timezone=s.timezone,
+            response_window_minutes=s.response_window_minutes,
+        )
+        for s in schedules
+    ]
+
+
+@router.post("/{medication_id}/schedules", response_model=MedicationRead)
+def update_medication_schedule(
+    medication_id: str,
+    req: ScheduleVersionCreate,
+    current_user: User = Depends(require_patient),
+    db: Session = Depends(get_db),
+):
+    """
+    Creates a new ScheduleVersion (clinical integrity rule: never overwrite past schedule).
+    Marks previous schedule effective_to = now, creates new version, and generates future events.
+    """
+    med = (
+        db.query(Medication)
+        .filter(Medication.id == medication_id, Medication.patient_id == current_user.id)
+        .first()
+    )
+    if not med:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Medication not found")
+
+    if not req.dose_times:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="At least one dose time required")
+
+    now = datetime.datetime.now(datetime.timezone.utc)
+
+    # Close previous active schedule
+    old_sched = (
+        db.query(ScheduleVersion)
+        .filter(ScheduleVersion.medication_id == med.id, ScheduleVersion.effective_to.is_(None))
+        .first()
+    )
+    if old_sched:
+        old_sched.effective_to = now
+
+    freq_rule = {"type": req.frequency_type}
+    if req.frequency_type == "days_of_week" and req.frequency_days:
+        freq_rule["days"] = req.frequency_days
+
+    tz = old_sched.timezone if old_sched else "Asia/Kolkata"
+    new_schedule = ScheduleVersion(
+        medication_id=med.id,
+        frequency_rule=freq_rule,
+        dose_times=req.dose_times,
+        effective_from=now,
+        timezone=tz,
+        response_window_minutes=360,
+        created_by_id=current_user.id,
+    )
+    db.add(new_schedule)
+    db.commit()
+    db.refresh(new_schedule)
+
+    # Generate rolling horizon events for new schedule
+    generate_events_for_schedule(db, med, new_schedule, horizon_days=14)
+
+    return map_medication_read(med, new_schedule)
+
 

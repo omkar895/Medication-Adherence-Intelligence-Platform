@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User, HeartHandshake, LogIn } from 'lucide-react';
+import { User, HeartHandshake, LogIn, ExternalLink, ShieldAlert } from 'lucide-react';
 import { api, User as UserType } from '../services/api';
 import {
   auth,
@@ -21,6 +21,12 @@ export const AuthModal: React.FC<Props> = ({ onSuccess }) => {
   const [role, setRole] = useState<'patient' | 'caregiver'>('patient');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const isIpAddress = window.location.hostname === '127.0.0.1';
+
+  const handleSwitchToLocalhost = () => {
+    window.location.href = window.location.href.replace('127.0.0.1', 'localhost');
+  };
 
   // 1-Click Demo Login (local synthetic data)
   const handleDemoLogin = async (targetRole: 'patient' | 'caregiver') => {
@@ -47,17 +53,25 @@ export const AuthModal: React.FC<Props> = ({ onSuccess }) => {
       const user = await api.firebaseLogin(idToken, role);
       onSuccess(user);
     } catch (err: any) {
-      setError(err.message || 'Firebase Google Sign-In failed');
+      if (err.code === 'auth/unauthorized-domain' || err.message?.includes('unauthorized-domain')) {
+        setError(
+          "Firebase domain notice: Google Sign-In requires 'localhost' instead of '127.0.0.1'. Please click the 'Switch to localhost' button above."
+        );
+      } else {
+        setError(err.message || 'Firebase Google Sign-In failed');
+      }
     } finally {
       setLoading(false);
     }
   };
 
   // Firebase Email / Password Sign In or Registration
-  const handleFirebaseEmailAuth = async (e: React.FormEvent) => {
+  const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
+
+    // Try Firebase first if on localhost, else fallback seamlessly to local backend
     try {
       let userCredential;
       if (isRegister) {
@@ -68,23 +82,25 @@ export const AuthModal: React.FC<Props> = ({ onSuccess }) => {
       const idToken = await userCredential.user.getIdToken();
       const user = await api.firebaseLogin(idToken, role);
       onSuccess(user);
-    } catch (err: any) {
-      // If unauthorized-domain (e.g. browsing 127.0.0.1 instead of localhost) or network error, fallback directly to local backend auth
+      return;
+    } catch (fbErr: any) {
+      // If unauthorized-domain (e.g. on 127.0.0.1), or email/password not enabled in Firebase, fallback directly to local backend
       try {
-        let fallbackUser: UserType;
+        let localUser: UserType;
         if (isRegister) {
-          fallbackUser = await api.register(name || email.split('@')[0], email, password, role);
+          localUser = await api.register(name || email.split('@')[0], email, password, role);
         } else {
-          fallbackUser = await api.login(email, password);
+          localUser = await api.login(email, password);
         }
-        onSuccess(fallbackUser);
+        onSuccess(localUser);
+        return;
       } catch (backendErr: any) {
-        if (err.code === 'auth/unauthorized-domain' || (err.message && err.message.includes('unauthorized-domain'))) {
+        if (fbErr.code === 'auth/unauthorized-domain' || fbErr.message?.includes('unauthorized-domain')) {
           setError(
-            "Firebase domain restriction: Please open the app via http://localhost:8000 instead of 127.0.0.1 (Firebase whitelists 'localhost' by default)."
+            `Firebase domain check blocked 127.0.0.1. Local auth also reported: ${backendErr.message}. Switch to localhost:8000 using the button above.`
           );
         } else {
-          setError(backendErr.message || err.message || 'Authentication failed');
+          setError(backendErr.message || fbErr.message || 'Authentication failed');
         }
       }
     } finally {
@@ -93,10 +109,10 @@ export const AuthModal: React.FC<Props> = ({ onSuccess }) => {
   };
 
   return (
-    <div className="min-h-screen bg-[#F7F5F0] flex items-center justify-center p-4">
-      <div className="max-w-md w-full bg-white border border-[#D9D5CA] rounded-md shadow-xl overflow-hidden">
+    <div className="min-h-screen bg-[#F7F5F0] dark:bg-[#121416] flex items-center justify-center p-4">
+      <div className="max-w-md w-full bg-white dark:bg-[#1E2226] border border-[#D9D5CA] dark:border-[#2E363D] rounded-md shadow-xl overflow-hidden">
         {/* Banner */}
-        <div className="bg-[#0F5C5A] p-6 text-white text-center space-y-1">
+        <div className="bg-[#0F5C5A] dark:bg-[#0A4240] p-6 text-white text-center space-y-1">
           <h1 className="text-xl font-bold tracking-tight">MAIP</h1>
           <p className="text-xs text-teal-100 uppercase tracking-wider font-semibold">
             Medication Adherence Intelligence Platform
@@ -104,22 +120,22 @@ export const AuthModal: React.FC<Props> = ({ onSuccess }) => {
         </div>
 
         {/* 1-Click Interactive Demo Access */}
-        <div className="p-4 bg-teal-50 border-b border-teal-200 text-xs space-y-2">
-          <span className="font-semibold text-[#0F5C5A] block uppercase tracking-wider text-[10px]">
-            ⚡ 1-Click Interactive Demo:
+        <div className="p-4 bg-teal-50 dark:bg-teal-950/50 border-b border-teal-200 dark:border-teal-800 text-xs space-y-2">
+          <span className="font-semibold text-[#0F5C5A] dark:text-[#1EB8B4] block uppercase tracking-wider text-[10px]">
+            ⚡ 1-Click Interactive Demo (Instant Access):
           </span>
           <div className="grid grid-cols-2 gap-2">
             <button
               onClick={() => handleDemoLogin('patient')}
               disabled={loading}
-              className="py-2 px-3 bg-white border border-[#0F5C5A] hover:bg-teal-50 text-[#0F5C5A] rounded font-medium flex items-center justify-center gap-1.5 shadow-xs"
+              className="py-2 px-3 bg-white dark:bg-[#121416] border border-[#0F5C5A] dark:border-[#1EB8B4] hover:bg-teal-50 dark:hover:bg-teal-950 text-[#0F5C5A] dark:text-[#1EB8B4] rounded font-medium flex items-center justify-center gap-1.5 shadow-xs transition-colors"
             >
               <User className="w-3.5 h-3.5" /> Patient Demo
             </button>
             <button
               onClick={() => handleDemoLogin('caregiver')}
               disabled={loading}
-              className="py-2 px-3 bg-white border border-[#0F5C5A] hover:bg-teal-50 text-[#0F5C5A] rounded font-medium flex items-center justify-center gap-1.5 shadow-xs"
+              className="py-2 px-3 bg-white dark:bg-[#121416] border border-[#0F5C5A] dark:border-[#1EB8B4] hover:bg-teal-50 dark:hover:bg-teal-950 text-[#0F5C5A] dark:text-[#1EB8B4] rounded font-medium flex items-center justify-center gap-1.5 shadow-xs transition-colors"
             >
               <HeartHandshake className="w-3.5 h-3.5" /> Caregiver Demo
             </button>
@@ -128,18 +144,23 @@ export const AuthModal: React.FC<Props> = ({ onSuccess }) => {
 
         {/* Firebase Authentication Section */}
         <div className="p-6 space-y-4">
-          {window.location.hostname === '127.0.0.1' && (
-            <div className="p-3 bg-amber-50 border border-amber-300 rounded text-xs text-amber-950 space-y-1">
-              <span className="font-semibold block">⚠️ Firebase Domain Notice:</span>
-              <span>
-                You are on <code className="bg-amber-100 px-1 py-0.5 rounded">127.0.0.1</code>. Firebase requires <code className="bg-amber-100 px-1 py-0.5 rounded">localhost</code> for Google Sign-In.{' '}
-                <a
-                  href={`http://localhost:${window.location.port || '8000'}`}
-                  className="font-bold underline text-[#0F5C5A] hover:text-teal-900"
-                >
-                  Click here to switch to http://localhost:{window.location.port || '8000'}
-                </a>
-              </span>
+          {isIpAddress && (
+            <div className="p-3 bg-amber-50 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-700 rounded text-xs text-amber-950 dark:text-amber-200 space-y-2">
+              <div className="flex items-center gap-1.5 font-semibold">
+                <ShieldAlert className="w-4 h-4 text-amber-800 dark:text-amber-400" />
+                <span>Notice: Browsing on 127.0.0.1</span>
+              </div>
+              <p className="text-[11px] leading-relaxed">
+                Firebase Authentication strictly permits <code className="bg-amber-100 dark:bg-amber-900 px-1 py-0.2 rounded font-mono">localhost</code>.
+              </p>
+              <button
+                type="button"
+                onClick={handleSwitchToLocalhost}
+                className="w-full py-1.5 bg-amber-200 dark:bg-amber-800 hover:bg-amber-300 dark:hover:bg-amber-700 text-amber-950 dark:text-amber-100 rounded text-xs font-semibold flex items-center justify-center gap-1 transition-colors"
+              >
+                <span>Switch to http://localhost:{window.location.port || '8000'}</span>
+                <ExternalLink className="w-3 h-3" />
+              </button>
             </div>
           )}
 
@@ -147,7 +168,7 @@ export const AuthModal: React.FC<Props> = ({ onSuccess }) => {
             <button
               onClick={handleGoogleSignIn}
               disabled={loading}
-              className="w-full py-2.5 px-4 bg-white border border-neutral-300 hover:bg-neutral-50 rounded text-xs font-semibold text-neutral-800 flex items-center justify-center gap-2 shadow-xs transition-colors"
+              className="w-full py-2.5 px-4 bg-white dark:bg-[#121416] border border-neutral-300 dark:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded text-xs font-semibold text-neutral-800 dark:text-neutral-200 flex items-center justify-center gap-2 shadow-xs transition-colors"
             >
               <svg className="w-4 h-4" viewBox="0 0 24 24">
                 <path
@@ -171,19 +192,21 @@ export const AuthModal: React.FC<Props> = ({ onSuccess }) => {
             </button>
 
             <div className="relative flex py-1 items-center">
-              <div className="flex-grow border-t border-neutral-200" />
-              <span className="flex-shrink mx-3 text-[11px] text-[#4A5159] uppercase tracking-wider">
+              <div className="flex-grow border-t border-neutral-200 dark:border-neutral-700" />
+              <span className="flex-shrink mx-3 text-[11px] text-[#4A5159] dark:text-[#9EABB5] uppercase tracking-wider">
                 or email
               </span>
-              <div className="flex-grow border-t border-neutral-200" />
+              <div className="flex-grow border-t border-neutral-200 dark:border-neutral-700" />
             </div>
           </div>
 
-          <div className="flex border-b border-[#D9D5CA]">
+          <div className="flex border-b border-[#D9D5CA] dark:border-[#2E363D]">
             <button
               onClick={() => setIsRegister(false)}
               className={`pb-2 flex-1 text-center text-xs font-semibold uppercase tracking-wider ${
-                !isRegister ? 'border-b-2 border-[#0F5C5A] text-[#0F5C5A]' : 'text-[#4A5159]'
+                !isRegister
+                  ? 'border-b-2 border-[#0F5C5A] dark:border-[#1EB8B4] text-[#0F5C5A] dark:text-[#1EB8B4]'
+                  : 'text-[#4A5159] dark:text-[#9EABB5]'
               }`}
             >
               Sign In
@@ -191,7 +214,9 @@ export const AuthModal: React.FC<Props> = ({ onSuccess }) => {
             <button
               onClick={() => setIsRegister(true)}
               className={`pb-2 flex-1 text-center text-xs font-semibold uppercase tracking-wider ${
-                isRegister ? 'border-b-2 border-[#0F5C5A] text-[#0F5C5A]' : 'text-[#4A5159]'
+                isRegister
+                  ? 'border-b-2 border-[#0F5C5A] dark:border-[#1EB8B4] text-[#0F5C5A] dark:text-[#1EB8B4]'
+                  : 'text-[#4A5159] dark:text-[#9EABB5]'
               }`}
             >
               Register
@@ -199,16 +224,16 @@ export const AuthModal: React.FC<Props> = ({ onSuccess }) => {
           </div>
 
           {error && (
-            <div className="p-2.5 bg-rose-50 text-rose-800 border border-rose-200 rounded text-xs">
+            <div className="p-2.5 bg-rose-50 dark:bg-rose-950/60 text-rose-800 dark:text-rose-200 border border-rose-200 dark:border-rose-800 rounded text-xs leading-relaxed">
               {error}
             </div>
           )}
 
-          <form onSubmit={handleFirebaseEmailAuth} className="space-y-3">
+          <form onSubmit={handleEmailAuth} className="space-y-3">
             {isRegister && (
               <>
                 <div>
-                  <label className="block text-xs font-semibold text-[#4A5159] mb-1">
+                  <label className="block text-xs font-semibold text-[#4A5159] dark:text-[#9EABB5] mb-1">
                     Display Name
                   </label>
                   <input
@@ -217,18 +242,18 @@ export const AuthModal: React.FC<Props> = ({ onSuccess }) => {
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="Your Name"
-                    className="w-full px-3 py-2 border border-[#D9D5CA] rounded text-sm focus:border-[#0F5C5A] focus:outline-none"
+                    className="w-full px-3 py-2 border border-[#D9D5CA] dark:border-[#2E363D] bg-white dark:bg-[#121416] text-[#1B1F23] dark:text-[#ECEFF1] rounded text-sm focus:outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-[#4A5159] mb-1">
+                  <label className="block text-xs font-semibold text-[#4A5159] dark:text-[#9EABB5] mb-1">
                     Account Role
                   </label>
                   <select
                     value={role}
                     onChange={(e) => setRole(e.target.value as any)}
-                    className="w-full px-3 py-2 border border-[#D9D5CA] rounded text-sm focus:border-[#0F5C5A] focus:outline-none"
+                    className="w-full px-3 py-2 border border-[#D9D5CA] dark:border-[#2E363D] bg-white dark:bg-[#121416] text-[#1B1F23] dark:text-[#ECEFF1] rounded text-sm focus:outline-none"
                   >
                     <option value="patient">Patient</option>
                     <option value="caregiver">Caregiver / Family</option>
@@ -238,7 +263,7 @@ export const AuthModal: React.FC<Props> = ({ onSuccess }) => {
             )}
 
             <div>
-              <label className="block text-xs font-semibold text-[#4A5159] mb-1">
+              <label className="block text-xs font-semibold text-[#4A5159] dark:text-[#9EABB5] mb-1">
                 Email Address
               </label>
               <input
@@ -247,12 +272,12 @@ export const AuthModal: React.FC<Props> = ({ onSuccess }) => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="name@example.com"
-                className="w-full px-3 py-2 border border-[#D9D5CA] rounded text-sm focus:border-[#0F5C5A] focus:outline-none"
+                className="w-full px-3 py-2 border border-[#D9D5CA] dark:border-[#2E363D] bg-white dark:bg-[#121416] text-[#1B1F23] dark:text-[#ECEFF1] rounded text-sm focus:outline-none"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-[#4A5159] mb-1">
+              <label className="block text-xs font-semibold text-[#4A5159] dark:text-[#9EABB5] mb-1">
                 Password
               </label>
               <input
@@ -261,21 +286,21 @@ export const AuthModal: React.FC<Props> = ({ onSuccess }) => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full px-3 py-2 border border-[#D9D5CA] rounded text-sm focus:border-[#0F5C5A] focus:outline-none"
+                className="w-full px-3 py-2 border border-[#D9D5CA] dark:border-[#2E363D] bg-white dark:bg-[#121416] text-[#1B1F23] dark:text-[#ECEFF1] rounded text-sm focus:outline-none"
               />
             </div>
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-2.5 bg-[#0F5C5A] hover:bg-teal-900 text-white rounded text-sm font-medium transition-colors shadow-sm disabled:opacity-50 mt-4 flex items-center justify-center gap-1.5"
+              className="w-full py-2.5 bg-[#0F5C5A] dark:bg-[#1EB8B4] hover:bg-teal-900 text-white dark:text-[#121416] rounded text-sm font-medium transition-colors shadow-xs disabled:opacity-50 mt-4 flex items-center justify-center gap-1.5"
             >
               <LogIn className="w-4 h-4" />
-              <span>{loading ? 'Authenticating…' : isRegister ? 'Register with Firebase' : 'Sign In with Firebase'}</span>
+              <span>{loading ? 'Authenticating…' : isRegister ? 'Register' : 'Sign In'}</span>
             </button>
           </form>
 
-          <p className="text-[11px] text-[#4A5159] text-center pt-2">
+          <p className="text-[11px] text-[#4A5159] dark:text-[#9EABB5] text-center pt-2">
             Firebase Authentication enabled with server-enforced role authorization.
           </p>
         </div>
