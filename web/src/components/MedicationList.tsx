@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import {
   Plus,
   Archive,
+  Trash2,
   CheckCircle2,
   AlertCircle,
   Clock,
@@ -115,6 +116,26 @@ export const MedicationList: React.FC<Props> = ({ medications, onRefresh }) => {
         onRefresh();
       } catch (err: any) {
         alert(err.message);
+      }
+    }
+  };
+
+  const handleDeleteMedication = async (id: string, name: string) => {
+    if (
+      window.confirm(
+        `Permanently remove "${name}"? This will delete future scheduled doses for this medication.`
+      )
+    ) {
+      try {
+        await api.deleteMedication(id);
+        setToastMessage(`Medication "${name}" removed successfully.`);
+        setTimeout(() => setToastMessage(null), 4000);
+        if (selectedMed?.id === id) {
+          setSelectedMed(null);
+        }
+        onRefresh();
+      } catch (err: any) {
+        alert(`Failed to remove medication: ${err.message}`);
       }
     }
   };
@@ -248,12 +269,20 @@ export const MedicationList: React.FC<Props> = ({ medications, onRefresh }) => {
                   {med.active && (
                     <button
                       onClick={() => handleArchive(med.id)}
-                      title="Archive medication"
-                      className="text-xs text-[#4A5159] dark:text-[#9EABB5] hover:text-red-700 flex items-center gap-1 border border-neutral-200 dark:border-neutral-700 px-2.5 py-1.5 rounded"
+                      title="Archive medication (preserve historical records)"
+                      className="text-xs text-[#4A5159] dark:text-[#9EABB5] hover:text-amber-700 flex items-center gap-1 border border-neutral-200 dark:border-neutral-700 px-2.5 py-1.5 rounded"
                     >
                       <Archive className="w-3.5 h-3.5" /> Archive
                     </button>
                   )}
+
+                  <button
+                    onClick={() => handleDeleteMedication(med.id, med.display_name)}
+                    title="Permanently remove medication"
+                    className="text-xs text-rose-700 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 flex items-center gap-1 border border-rose-200 dark:border-rose-900 px-2.5 py-1.5 rounded transition-colors"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" /> Remove
+                  </button>
                 </div>
               </div>
 

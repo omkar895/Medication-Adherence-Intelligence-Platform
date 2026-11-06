@@ -23,7 +23,7 @@ def get_analytics_summary(
     now = datetime.datetime.now(datetime.timezone.utc)
     start_dt = now - datetime.timedelta(days=days)
 
-    events = (
+    raw_events = (
         db.query(DoseEvent)
         .filter(
             DoseEvent.patient_id == current_user.id,
@@ -32,6 +32,9 @@ def get_analytics_summary(
         )
         .all()
     )
+
+    # Eligible events per PRD FR-08: closed response window or explicit outcome
+    events = [e for e in raw_events if e.status in ["taken", "not_taken", "unresolved"]]
 
     S = len(events)
     T = sum(1 for e in events if e.status == "taken")
@@ -74,7 +77,7 @@ def get_medication_summaries(
     summaries = []
 
     for med in medications:
-        events = (
+        raw_events = (
             db.query(DoseEvent)
             .filter(
                 DoseEvent.medication_id == med.id,
@@ -84,6 +87,7 @@ def get_medication_summaries(
             )
             .all()
         )
+        events = [e for e in raw_events if e.status in ["taken", "not_taken", "unresolved"]]
         S = len(events)
         T = sum(1 for e in events if e.status == "taken")
         N = sum(1 for e in events if e.status == "not_taken")

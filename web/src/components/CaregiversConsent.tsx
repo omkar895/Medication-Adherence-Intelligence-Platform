@@ -1,5 +1,18 @@
 import React, { useState } from 'react';
-import { UserPlus, ShieldAlert, Check, X, Key, AlertTriangle, ShieldCheck, Copy } from 'lucide-react';
+import {
+  UserPlus,
+  ShieldCheck,
+  Check,
+  X,
+  Key,
+  Trash2,
+  Copy,
+  Phone,
+  Mail,
+  Send,
+  MessageCircle,
+  ExternalLink,
+} from 'lucide-react';
 import { ConsentGrant, api } from '../services/api';
 
 interface Props {
@@ -19,6 +32,7 @@ const AVAILABLE_SCOPES = [
 
 export const CaregiversConsent: React.FC<Props> = ({ consents, pendingInvitations, onRefresh }) => {
   const [showInviteModal, setShowInviteModal] = useState(false);
+  const [inviteMethod, setInviteMethod] = useState<'phone' | 'email' | 'code'>('phone');
   const [contact, setContact] = useState('');
   const [selectedScopes, setSelectedScopes] = useState<string[]>([
     'medication_names',
@@ -41,10 +55,12 @@ export const CaregiversConsent: React.FC<Props> = ({ consents, pendingInvitation
   };
 
   const handleCreateInvite = async () => {
-    if (!contact.trim()) return;
+    const contactValue = contact.trim() || (inviteMethod === 'code' ? 'Direct Code' : '');
+    if (!contactValue) return;
+
     setSubmitting(true);
     try {
-      const res = await api.createCaregiverInvite(contact, selectedScopes);
+      const res = await api.createCaregiverInvite(contactValue, selectedScopes);
       setGeneratedInvite(res);
       onRefresh();
     } catch (err: any) {
@@ -57,11 +73,26 @@ export const CaregiversConsent: React.FC<Props> = ({ consents, pendingInvitation
   const handleRevoke = async (consentId: string) => {
     if (
       window.confirm(
-        'Are you sure you want to revoke this caregiver’s access? Server-side access will cease immediately.'
+        'Revoke this caregiver’s access? Server-side access will cease immediately.'
       )
     ) {
       try {
         await api.revokeConsent(consentId);
+        onRefresh();
+      } catch (err: any) {
+        alert(err.message);
+      }
+    }
+  };
+
+  const handleRemoveCaregiver = async (consentId: string) => {
+    if (
+      window.confirm(
+        'Permanently remove this caregiver? The relationship will be deleted and access permanently severed.'
+      )
+    ) {
+      try {
+        await api.deleteConsent(consentId);
         onRefresh();
       } catch (err: any) {
         alert(err.message);
@@ -82,7 +113,7 @@ export const CaregiversConsent: React.FC<Props> = ({ consents, pendingInvitation
         <div>
           <h2 className="text-xl font-bold text-[#1B1F23] dark:text-[#ECEFF1]">Caregiver Sharing & Consent</h2>
           <p className="text-xs text-[#4A5159] dark:text-[#9EABB5] mt-0.5">
-            You maintain full sovereignty. Access is opt-in, granular, and can be revoked at any time.
+            You maintain full sovereignty. Access is opt-in, granular, and can be removed or revoked anytime.
           </p>
         </div>
 
@@ -90,6 +121,7 @@ export const CaregiversConsent: React.FC<Props> = ({ consents, pendingInvitation
           onClick={() => {
             setShowInviteModal(true);
             setGeneratedInvite(null);
+            setContact('');
           }}
           className="h-10 px-4 bg-[#0F5C5A] dark:bg-[#1EB8B4] hover:bg-teal-900 text-white dark:text-[#121416] rounded text-sm font-semibold flex items-center justify-center gap-1.5 shadow-xs transition-colors self-start sm:self-auto"
         >
@@ -100,7 +132,7 @@ export const CaregiversConsent: React.FC<Props> = ({ consents, pendingInvitation
       {/* Active Caregiver Grants */}
       <div className="space-y-4">
         <h3 className="text-xs font-bold uppercase tracking-wider text-[#4A5159] dark:text-[#9EABB5]">
-          Active Consent Grants
+          Connected Caregivers
         </h3>
 
         {consents.length === 0 ? (
@@ -115,7 +147,7 @@ export const CaregiversConsent: React.FC<Props> = ({ consents, pendingInvitation
                 g.revoked_at ? 'border-neutral-300 dark:border-neutral-700 opacity-60' : 'border-[#D9D5CA] dark:border-[#2E363D]'
               }`}
             >
-              <div className="flex items-start justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="font-semibold text-base text-[#1B1F23] dark:text-[#ECEFF1]">
@@ -136,14 +168,24 @@ export const CaregiversConsent: React.FC<Props> = ({ consents, pendingInvitation
                   </div>
                 </div>
 
-                {!g.revoked_at && (
+                <div className="flex items-center gap-2 self-start sm:self-auto">
+                  {!g.revoked_at && (
+                    <button
+                      onClick={() => handleRevoke(g.id)}
+                      className="px-3 py-1.5 bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-300 hover:bg-amber-100 rounded text-xs font-semibold transition-colors"
+                    >
+                      Revoke Access
+                    </button>
+                  )}
+
                   <button
-                    onClick={() => handleRevoke(g.id)}
-                    className="px-3 py-1.5 bg-rose-50 dark:bg-rose-950/40 border border-rose-300 dark:border-rose-800 text-rose-800 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-900/60 rounded text-xs font-semibold transition-colors"
+                    onClick={() => handleRemoveCaregiver(g.id)}
+                    className="px-3 py-1.5 bg-rose-50 dark:bg-rose-950/40 border border-rose-300 dark:border-rose-800 text-rose-800 dark:text-rose-300 hover:bg-rose-100 rounded text-xs font-semibold flex items-center gap-1 transition-colors"
                   >
-                    Revoke Access Immediately
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Remove</span>
                   </button>
-                )}
+                </div>
               </div>
 
               {/* Scopes display */}
@@ -200,18 +242,20 @@ export const CaregiversConsent: React.FC<Props> = ({ consents, pendingInvitation
         </div>
       )}
 
-      {/* Invite Wizard Modal */}
+      {/* Multi-Channel Invite Wizard Modal (Phone / Email / Code) */}
       {showInviteModal && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
           <div className="bg-white dark:bg-[#1E2226] max-w-lg w-full rounded-md border border-[#D9D5CA] dark:border-[#2E363D] shadow-2xl overflow-hidden">
             <div className="bg-[#F7F5F0] dark:bg-[#252A2F] px-6 py-4 border-b border-[#D9D5CA] dark:border-[#2E363D] flex items-center justify-between">
               <div>
-                <h3 className="text-lg font-semibold text-[#1B1F23] dark:text-[#ECEFF1]">Invite Caregiver</h3>
-                <p className="text-xs text-[#4A5159] dark:text-[#9EABB5]">Specify recipient contact and permitted scopes</p>
+                <h3 className="text-lg font-bold text-[#1B1F23] dark:text-[#ECEFF1]">Invite Caregiver</h3>
+                <p className="text-xs text-[#4A5159] dark:text-[#9EABB5]">
+                  Invite via Phone (WhatsApp/SMS), Email, or Direct Code
+                </p>
               </div>
               <button
                 onClick={() => setShowInviteModal(false)}
-                className="text-[#4A5159] dark:text-[#9EABB5] hover:text-[#1B1F23] text-lg font-bold"
+                className="text-[#4A5159] dark:text-[#9EABB5] hover:text-[#1B1F23] text-xl font-bold"
               >
                 ×
               </button>
@@ -222,22 +266,42 @@ export const CaregiversConsent: React.FC<Props> = ({ consents, pendingInvitation
                 <div className="space-y-4">
                   <div className="p-4 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-300 dark:border-emerald-700 rounded text-center space-y-2">
                     <Check className="w-8 h-8 mx-auto text-emerald-700 dark:text-emerald-400" />
-                    <h4 className="font-semibold text-emerald-950 dark:text-emerald-100">Invitation Generated</h4>
+                    <h4 className="font-bold text-emerald-950 dark:text-emerald-100">Caregiver Invitation Ready</h4>
                     <p className="text-xs text-emerald-900 dark:text-emerald-300">
-                      Share this single-use code with your family member or caregiver:
+                      Share this 6-digit code or send directly via WhatsApp / SMS:
                     </p>
-                    <div className="p-3 bg-white dark:bg-[#121416] border border-emerald-400 dark:border-emerald-700 rounded font-mono font-bold text-lg text-emerald-950 dark:text-emerald-200 select-all flex items-center justify-between">
+                    <div className="p-3 bg-white dark:bg-[#121416] border border-emerald-400 dark:border-emerald-700 rounded font-mono font-bold text-xl text-emerald-950 dark:text-emerald-200 select-all flex items-center justify-between">
                       <span className="mx-auto">{generatedInvite.invite_token}</span>
                       <button
                         onClick={() => handleCopy(generatedInvite.invite_token)}
-                        className="text-xs text-emerald-700 dark:text-emerald-400 p-1 rounded hover:bg-emerald-50 dark:hover:bg-emerald-900/50"
+                        className="text-xs text-emerald-700 dark:text-emerald-400 p-1.5 rounded hover:bg-emerald-50 dark:hover:bg-emerald-900/50"
                       >
                         {copiedCode ? 'Copied!' : <Copy className="w-4 h-4" />}
                       </button>
                     </div>
-                    <p className="text-[11px] text-emerald-800 dark:text-emerald-400">
-                      Valid for 7 days. They can log in to the Caregiver Portal and enter this code to link access.
-                    </p>
+
+                    {/* Quick WhatsApp Share Button */}
+                    {generatedInvite.whatsapp_link && (
+                      <a
+                        href={generatedInvite.whatsapp_link}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center justify-center gap-2 w-full py-2.5 bg-[#25D366] hover:bg-[#1EBE5D] text-white rounded font-semibold text-xs shadow-xs transition-colors mt-2"
+                      >
+                        <MessageCircle className="w-4 h-4" />
+                        <span>Send Invitation via WhatsApp</span>
+                      </a>
+                    )}
+
+                    {generatedInvite.mailto_link && (
+                      <a
+                        href={generatedInvite.mailto_link}
+                        className="inline-flex items-center justify-center gap-2 w-full py-2 bg-neutral-100 dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 rounded font-semibold text-xs border border-neutral-300 dark:border-neutral-700 mt-1"
+                      >
+                        <Mail className="w-4 h-4" />
+                        <span>Send Invitation via Email</span>
+                      </a>
+                    )}
                   </div>
 
                   <button
@@ -249,24 +313,89 @@ export const CaregiversConsent: React.FC<Props> = ({ consents, pendingInvitation
                 </div>
               ) : (
                 <div className="space-y-4">
-                  <div>
-                    <label className="block text-xs font-semibold uppercase tracking-wider text-[#4A5159] dark:text-[#9EABB5] mb-1">
-                      Caregiver Email or Phone
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="e.g. rahul@example.com or +91..."
-                      value={contact}
-                      onChange={(e) => setContact(e.target.value)}
-                      className="w-full px-3 py-2 border border-[#D9D5CA] dark:border-[#2E363D] bg-white dark:bg-[#121416] text-[#1B1F23] dark:text-[#ECEFF1] rounded text-sm focus:outline-none"
-                    />
+                  {/* Method Selector Tabs */}
+                  <div className="grid grid-cols-3 gap-1 bg-[#F7F5F0] dark:bg-[#121416] p-1 rounded border border-[#D9D5CA] dark:border-[#2E363D] text-xs">
+                    <button
+                      type="button"
+                      onClick={() => setInviteMethod('phone')}
+                      className={`py-1.5 rounded font-semibold flex items-center justify-center gap-1.5 transition-colors ${
+                        inviteMethod === 'phone'
+                          ? 'bg-white dark:bg-[#1E2226] text-[#0F5C5A] dark:text-[#1EB8B4] shadow-2xs'
+                          : 'text-[#4A5159] dark:text-[#9EABB5]'
+                      }`}
+                    >
+                      <Phone className="w-3.5 h-3.5" /> Phone
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setInviteMethod('email')}
+                      className={`py-1.5 rounded font-semibold flex items-center justify-center gap-1.5 transition-colors ${
+                        inviteMethod === 'email'
+                          ? 'bg-white dark:bg-[#1E2226] text-[#0F5C5A] dark:text-[#1EB8B4] shadow-2xs'
+                          : 'text-[#4A5159] dark:text-[#9EABB5]'
+                      }`}
+                    >
+                      <Mail className="w-3.5 h-3.5" /> Email
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setInviteMethod('code')}
+                      className={`py-1.5 rounded font-semibold flex items-center justify-center gap-1.5 transition-colors ${
+                        inviteMethod === 'code'
+                          ? 'bg-white dark:bg-[#1E2226] text-[#0F5C5A] dark:text-[#1EB8B4] shadow-2xs'
+                          : 'text-[#4A5159] dark:text-[#9EABB5]'
+                      }`}
+                    >
+                      <Key className="w-3.5 h-3.5" /> Code Only
+                    </button>
                   </div>
+
+                  {inviteMethod === 'phone' && (
+                    <div>
+                      <label className="block text-xs font-semibold uppercase tracking-wider text-[#4A5159] dark:text-[#9EABB5] mb-1">
+                        Caregiver Mobile Phone Number
+                      </label>
+                      <input
+                        type="tel"
+                        required
+                        placeholder="e.g. +91 9876543210"
+                        value={contact}
+                        onChange={(e) => setContact(e.target.value)}
+                        className="w-full px-3 py-2 border border-[#D9D5CA] dark:border-[#2E363D] bg-white dark:bg-[#121416] text-[#1B1F23] dark:text-[#ECEFF1] rounded text-sm focus:outline-none"
+                      />
+                      <p className="text-[10px] text-neutral-500 mt-1">
+                        Allows 1-click invitation sharing via WhatsApp & SMS.
+                      </p>
+                    </div>
+                  )}
+
+                  {inviteMethod === 'email' && (
+                    <div>
+                      <label className="block text-xs font-semibold uppercase tracking-wider text-[#4A5159] dark:text-[#9EABB5] mb-1">
+                        Caregiver Email Address
+                      </label>
+                      <input
+                        type="email"
+                        required
+                        placeholder="e.g. rahul@example.com"
+                        value={contact}
+                        onChange={(e) => setContact(e.target.value)}
+                        className="w-full px-3 py-2 border border-[#D9D5CA] dark:border-[#2E363D] bg-white dark:bg-[#121416] text-[#1B1F23] dark:text-[#ECEFF1] rounded text-sm focus:outline-none"
+                      />
+                    </div>
+                  )}
+
+                  {inviteMethod === 'code' && (
+                    <div className="p-3 bg-teal-50 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-800 rounded text-xs text-teal-950 dark:text-teal-200">
+                      Generate a single-use 6-digit invitation code to share verbally or via any messaging channel.
+                    </div>
+                  )}
 
                   <div>
                     <label className="block text-xs font-semibold uppercase tracking-wider text-[#4A5159] dark:text-[#9EABB5] mb-2">
                       Select Permitted Data Scopes:
                     </label>
-                    <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                    <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
                       {AVAILABLE_SCOPES.map((scope) => (
                         <label
                           key={scope.id}
@@ -294,10 +423,10 @@ export const CaregiversConsent: React.FC<Props> = ({ consents, pendingInvitation
                   <div className="pt-2">
                     <button
                       onClick={handleCreateInvite}
-                      disabled={submitting || !contact.trim() || selectedScopes.length === 0}
+                      disabled={submitting || (inviteMethod !== 'code' && !contact.trim()) || selectedScopes.length === 0}
                       className="w-full py-2.5 bg-[#0F5C5A] dark:bg-[#1EB8B4] hover:bg-teal-900 text-white dark:text-[#121416] rounded text-sm font-semibold shadow-xs disabled:opacity-50"
                     >
-                      {submitting ? 'Generating Invitation…' : 'Generate Invitation Code'}
+                      {submitting ? 'Generating Invitation…' : 'Generate Invitation'}
                     </button>
                   </div>
                 </div>

@@ -346,6 +346,12 @@ export const api = {
     });
   },
 
+  async deleteMedication(medicationId: string): Promise<{ status: string; message: string }> {
+    return request<{ status: string; message: string }>(`/api/v1/medications/${medicationId}`, {
+      method: 'DELETE',
+    });
+  },
+
   async updateMedication(medicationId: string, data: Partial<Medication>): Promise<Medication> {
     return request<Medication>(`/api/v1/medications/${medicationId}`, {
       method: 'PATCH',
@@ -443,6 +449,12 @@ export const api = {
   async revokeConsent(consentId: string): Promise<ConsentGrant> {
     return request<ConsentGrant>(`/api/v1/consent/${consentId}/revoke`, {
       method: 'POST',
+    });
+  },
+
+  async deleteConsent(consentId: string): Promise<{ status: string; message: string }> {
+    return request<{ status: string; message: string }>(`/api/v1/consent/${consentId}`, {
+      method: 'DELETE',
     });
   },
 

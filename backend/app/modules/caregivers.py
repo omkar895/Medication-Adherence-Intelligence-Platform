@@ -1,5 +1,6 @@
 import datetime
 import uuid
+import urllib.parse
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from backend.app.core.database import get_db
@@ -30,9 +31,11 @@ def create_caregiver_invitation(
     db: Session = Depends(get_db),
 ):
     now = datetime.datetime.now(datetime.timezone.utc)
-    raw_token = f"INV-{uuid.uuid4().hex[:12].upper()}"
+    # Generate clean, user-friendly 6-character code e.g. CARE-4921
+    short_suffix = uuid.uuid4().hex[:6].upper()
+    raw_token = f"CARE-{short_suffix}"
     token_hash = hash_token(raw_token)
-    contact_hash = hash_token(req.contact)
+    contact_hash = hash_token(req.contact.strip())
 
     # Create care relationship in pending status
     rel = CareRelationship(
@@ -53,8 +56,6 @@ def create_caregiver_invitation(
     )
     db.add(invitation)
 
-    # Record planned scopes in relationship or temporary draft
-    # Will be formalized into ConsentGrant upon acceptance
     audit = AuditEvent(
         actor_id=current_user.id,
         action="create_caregiver_invitation",
@@ -66,12 +67,32 @@ def create_caregiver_invitation(
     db.add(audit)
     db.commit()
 
+    # Pre-generate helpful WhatsApp and Mailto share links
+    contact_str = req.contact.strip()
+    digits_only = "".join(ch for ch in contact_str if ch.isdigit())
+    
+    share_msg = f"Hello! {current_user.display_name} has invited you as an authorized caregiver on MAIP. Please connect using Invitation Code: {raw_token} at http://localhost:8000"
+    encoded_msg = urllib.parse.quote(share_msg)
+
+    whatsapp_link = None
+    if digits_only and len(digits_only) >= 10:
+        whatsapp_link = f"https://wa.me/{digits_only}?text={encoded_msg}"
+    else:
+        whatsapp_link = f"https://wa.me/?text={encoded_msg}"
+
+    mailto_link = None
+    if "@" in contact_str:
+        mailto_link = f"mailto:{contact_str}?subject=Caregiver%20Access%20Invitation&body={encoded_msg}"
+
     return {
         "invitation_id": invitation.id,
         "invite_token": raw_token,
         "expires_at": invitation.expires_at.isoformat(),
         "scopes": req.scopes,
         "contact": req.contact,
+        "whatsapp_link": whatsapp_link,
+        "mailto_link": mailto_link,
+        "share_message": share_msg,
         "status": "pending",
     }
 
@@ -298,6 +319,32 @@ def update_consent_grant(
         revoked_at=grant.revoked_at,
     )
 
+
+@router.delete("/consent/{consent_id}")
+def delete_consent_and_remove_caregiver(
+    consent_id: str,
+    current_user: User = Depends(require_patient),
+    db: Session = Depends(get_db),
+):
+    grant = (
+        db.query(ConsentGrant)
+        .filter(ConsentGrant.id == consent_id, ConsentGrant.patient_id == current_user.id)
+        .first()
+    )
+    if not grant:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Consent grant not found")
+
+    # Sever care relationship
+    db.query(CareRelationship).filter(
+        CareRelationship.patient_id == grant.patient_id,
+        CareRelationship.caregiver_id == grant.caregiver_id,
+    ).delete(synchronize_session=False)
+
+    db.delete(grant)
+    db.commit()
+    return {"status": "success", "message": "Caregiver disconnected and removed completely."}
+
+
 @router.post("/consent/{consent_id}/revoke", response_model=ConsentGrantRead)
 def revoke_consent(
     consent_id: str,
@@ -355,6 +402,32 @@ def revoke_consent(
         granted_at=grant.granted_at,
         revoked_at=grant.revoked_at,
     )
+
+
+@router.delete("/consent/{consent_id}")
+def delete_consent_and_remove_caregiver(
+    consent_id: str,
+    current_user: User = Depends(require_patient),
+    db: Session = Depends(get_db),
+):
+    grant = (
+        db.query(ConsentGrant)
+        .filter(ConsentGrant.id == consent_id, ConsentGrant.patient_id == current_user.id)
+        .first()
+    )
+    if not grant:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Consent grant not found")
+
+    # Sever care relationship
+    db.query(CareRelationship).filter(
+        CareRelationship.patient_id == grant.patient_id,
+        CareRelationship.caregiver_id == grant.caregiver_id,
+    ).delete(synchronize_session=False)
+
+    db.delete(grant)
+    db.commit()
+    return {"status": "success", "message": "Caregiver disconnected and removed completely."}
+
 
 @router.get("/caregiver-notifications", response_model=list[CaregiverNotificationRead])
 def list_caregiver_notifications(

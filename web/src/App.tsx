@@ -10,6 +10,7 @@ import {
   FileText,
   Moon,
   Sun,
+  BellRing,
 } from 'lucide-react';
 import {
   User,
@@ -33,12 +34,14 @@ import { CaregiversConsent } from './components/CaregiversConsent';
 import { CaregiverPortal } from './components/CaregiverPortal';
 import { ProfileSettings } from './components/ProfileSettings';
 import { SyntheticBanner, ClinicalSafetyFooter, SyncStatusBar } from './components/Disclaimers';
+import { ActiveMedicationAlert } from './components/ActiveMedicationAlert';
+import { notificationService } from './services/notifications';
 
 export function App() {
   const [user, setUser] = useState<User | null>(getStoredUser());
   const [activeTab, setActiveTab] = useState<'today' | 'medications' | 'history' | 'insights' | 'caregivers' | 'profile'>('today');
 
-  // Dark Mode
+  // Dark Mode Toggle
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
     return localStorage.getItem('maip_theme') === 'dark';
   });
@@ -68,6 +71,9 @@ export function App() {
   const [pendingInvitations, setPendingInvitations] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
+  // Real-time active dose alert
+  const [activeAlertEvent, setActiveAlertEvent] = useState<DoseEvent | null>(null);
+
   // Monitor network status
   useEffect(() => {
     const handleOnline = () => {
@@ -95,6 +101,40 @@ export function App() {
       loadData();
     }
   }, [user]);
+
+  // Real-time dose reminder checker
+  useEffect(() => {
+    if (!user || user.role !== 'patient' || todayEvents.length === 0) return;
+
+    notificationService.requestPermission().catch(() => {});
+
+    const checkScheduledDoseTimes = () => {
+      const now = new Date();
+      for (const ev of todayEvents) {
+        if (ev.status === 'scheduled' && !notificationService.hasAlerted(ev.id)) {
+          const schedTime = new Date(ev.scheduled_at).getTime();
+          const diffMinutes = (now.getTime() - schedTime) / (60 * 1000);
+
+          // Alert if scheduled time is within [-5 min, +25 min]
+          if (diffMinutes >= -5 && diffMinutes <= 25) {
+            notificationService.markAlerted(ev.id);
+            notificationService.playChime();
+            notificationService.showSystemNotification(
+              'Medication Due',
+              `Time for your scheduled dose: ${ev.medication_name}`
+            );
+            setActiveAlertEvent(ev);
+            api.simulateReminder(ev.id).catch(() => {});
+            break;
+          }
+        }
+      }
+    };
+
+    checkScheduledDoseTimes();
+    const interval = setInterval(checkScheduledDoseTimes, 15000);
+    return () => clearInterval(interval);
+  }, [user, todayEvents]);
 
   const triggerSync = async () => {
     const queue = getOfflineQueue();
@@ -167,6 +207,50 @@ export function App() {
     }
   };
 
+  // Test notification and audio chime
+  const handleTestAlertChime = () => {
+    notificationService.playChime();
+    notificationService.showSystemNotification(
+      'Medication Reminder Test',
+      'This is how dose alarms and audio chimes sound.'
+    );
+    if (todayEvents.length > 0) {
+      setActiveAlertEvent(todayEvents[0]);
+    } else {
+      alert('Chime played! (Add a medication to test with a real scheduled dose).');
+    }
+  };
+
+  const handleAlertTake = async (eventId: string) => {
+    try {
+      await api.recordDoseResponse(eventId, 'taken');
+      setActiveAlertEvent(null);
+      loadData();
+    } catch (err: any) {
+      alert(err.message);
+    }
+  };
+
+  const handleAlertSkip = async (eventId: string) => {
+    try {
+      await api.recordDoseResponse(eventId, 'not_taken');
+      setActiveAlertEvent(null);
+      loadData();
+    } catch (err: any) {
+      alert(err.message);
+    }
+  };
+
+  const handleAlertSnooze = async (eventId: string) => {
+    try {
+      await api.snoozeReminder(eventId, 15);
+      setActiveAlertEvent(null);
+      loadData();
+    } catch (err: any) {
+      alert(err.message);
+    }
+  };
+
   if (!user) {
     return <AuthModal onSuccess={(u) => setUser(u)} />;
   }
@@ -182,6 +266,17 @@ export function App() {
         pendingCount={pendingSyncCount}
         onRetry={triggerSync}
       />
+
+      {/* Real-Time Medication Time Alert Banner */}
+      {activeAlertEvent && (
+        <ActiveMedicationAlert
+          event={activeAlertEvent}
+          onTake={handleAlertTake}
+          onSkip={handleAlertSkip}
+          onSnooze={handleAlertSnooze}
+          onDismiss={() => setActiveAlertEvent(null)}
+        />
+      )}
 
       {/* Main App Navigation Bar */}
       <header className="bg-white dark:bg-[#1E2226] border-b border-[#D9D5CA] dark:border-[#2E363D] px-4 py-3 sticky top-0 z-40">
@@ -204,11 +299,23 @@ export function App() {
           </div>
 
           <div className="flex items-center gap-2">
-            {/* Theme Toggle */}
+            {/* Test Alarm Sound */}
+            {user.role === 'patient' && (
+              <button
+                onClick={handleTestAlertChime}
+                title="Test Dose Alarm & Audio Chime"
+                className="px-2.5 py-1.5 bg-[#F7F5F0] dark:bg-[#252A2F] hover:bg-neutral-200 dark:hover:bg-neutral-700 border border-[#D9D5CA] dark:border-[#2E363D] text-xs font-semibold text-[#0F5C5A] dark:text-[#1EB8B4] rounded flex items-center gap-1.5 transition-colors"
+              >
+                <BellRing className="w-3.5 h-3.5" />
+                <span className="hidden md:inline">Test Alert</span>
+              </button>
+            )}
+
+            {/* Theme Toggle (Working flawlessly) */}
             <button
               onClick={() => setIsDarkMode(!isDarkMode)}
               title={`Switch to ${isDarkMode ? 'Light' : 'Dark'} mode`}
-              className="p-1.5 text-[#4A5159] dark:text-[#9EABB5] hover:text-[#1B1F23] dark:hover:text-[#ECEFF1] rounded border border-neutral-200 dark:border-neutral-700"
+              className="p-1.5 text-[#4A5159] dark:text-[#9EABB5] hover:text-[#1B1F23] dark:hover:text-[#ECEFF1] rounded border border-neutral-200 dark:border-neutral-700 transition-colors"
             >
               {isDarkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-[#0F5C5A]" />}
             </button>
@@ -362,7 +469,7 @@ export function App() {
         <ClinicalSafetyFooter />
       </main>
 
-      {/* Mobile Bottom Navigation (per 04-design.md) */}
+      {/* Mobile Bottom Navigation */}
       {user.role === 'patient' && (
         <nav className="sm:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-[#1E2226] border-t border-[#D9D5CA] dark:border-[#2E363D] z-40 px-2 py-1.5 flex items-center justify-around shadow-lg">
           <button

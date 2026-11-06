@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Enable class-based dark mode in Tailwind CSS v4 */
+@variant dark (&:where(.dark, .dark *));
+
 @layer base {
   :root {
     --color-paper: #F7F5F0;
@@ -33,6 +36,10 @@
     font-size: 16px;
   }
 
+  html.dark {
+    color-scheme: dark;
+  }
+
   html.text-size-large {
     font-size: 18px;
   }
@@ -45,6 +52,7 @@
     background-color: var(--color-paper);
     color: var(--color-ink);
     min-height: 100vh;
+    transition: background-color 0.2s ease, color 0.2s ease;
   }
 
   .font-mono-numbers {

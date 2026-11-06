@@ -299,3 +299,24 @@ def update_medication_schedule(
     return map_medication_read(med, new_schedule)
 
 
+@router.delete("/{medication_id}")
+def delete_medication(
+    medication_id: str,
+    current_user: User = Depends(require_patient),
+    db: Session = Depends(get_db),
+):
+    med = (
+        db.query(Medication)
+        .filter(Medication.id == medication_id, Medication.patient_id == current_user.id)
+        .first()
+    )
+    if not med:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Medication not found")
+
+    # Remove medication & cascade
+    db.delete(med)
+    db.commit()
+    return {"status": "success", "message": f"Medication '{med.display_name}' removed successfully"}
+
+
+
