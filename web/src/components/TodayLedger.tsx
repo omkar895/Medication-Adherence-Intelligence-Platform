@@ -14,8 +14,16 @@ export const TodayLedger: React.FC<Props> = ({ events, onRefresh, loading }) => 
   const [selectedEvent, setSelectedEvent] = useState<DoseEvent | null>(null);
   const [simulating, setSimulating] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [currentTime, setCurrentTime] = useState<Date>(new Date());
 
-  const now = new Date();
+  React.useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const now = currentTime;
   const sorted = [...events].sort(
     (a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime()
   );
@@ -23,6 +31,23 @@ export const TodayLedger: React.FC<Props> = ({ events, onRefresh, loading }) => 
   const nextUpcoming =
     sorted.find((e) => e.status === 'scheduled' && new Date(e.scheduled_at) >= now) ||
     sorted.find((e) => e.status === 'scheduled');
+
+  const getTimeRemaining = (scheduledAt: string) => {
+    const diffMs = new Date(scheduledAt).getTime() - currentTime.getTime();
+    if (diffMs <= 0) {
+      const pastMins = Math.floor(-diffMs / 60000);
+      if (pastMins < 60) return `Due now (${pastMins}m ago)`;
+      return `Due now`;
+    }
+    const diffSecs = Math.floor(diffMs / 1000);
+    const hours = Math.floor(diffSecs / 3600);
+    const mins = Math.floor((diffSecs % 3600) / 60);
+    const secs = diffSecs % 60;
+    if (hours > 0) {
+      return `Due in ${hours}h ${mins}m ${secs}s`;
+    }
+    return `Due in ${mins}m ${secs}s`;
+  };
 
   const totalDoses = events.length;
   const takenCount = events.filter((e) => e.status === 'taken').length;
@@ -71,12 +96,18 @@ export const TodayLedger: React.FC<Props> = ({ events, onRefresh, loading }) => 
             <span className="text-xs font-bold uppercase tracking-wider text-[#0F5C5A] dark:text-[#1EB8B4] flex items-center gap-1.5">
               <Clock className="w-4 h-4" /> Next Scheduled Dose
             </span>
-            <span className="text-xs font-mono-numbers font-semibold text-[#4A5159] dark:text-[#9EABB5] bg-[#F7F5F0] dark:bg-[#121416] px-2 py-0.5 rounded border border-[#D9D5CA] dark:border-[#2E363D]">
-              {new Date(nextUpcoming.scheduled_at).toLocaleTimeString([], {
-                hour: '2-digit',
-                minute: '2-digit',
-              })}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                {getTimeRemaining(nextUpcoming.scheduled_at)}
+              </span>
+              <span className="text-xs font-mono-numbers font-semibold text-[#4A5159] dark:text-[#9EABB5] bg-[#F7F5F0] dark:bg-[#121416] px-2 py-0.5 rounded border border-[#D9D5CA] dark:border-[#2E363D]">
+                {new Date(nextUpcoming.scheduled_at).toLocaleTimeString([], {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })}
+              </span>
+            </div>
           </div>
 
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mt-2">
@@ -197,11 +228,6 @@ export const TodayLedger: React.FC<Props> = ({ events, onRefresh, loading }) => 
                     <div>
                       <div className="font-semibold text-base text-[#1B1F23] dark:text-[#ECEFF1] flex items-center gap-2">
                         <span>{ev.medication_name}</span>
-                        {ev.is_synthetic && (
-                          <span className="text-[10px] bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700 px-1 py-0.2 rounded font-mono">
-                            SYNTHETIC
-                          </span>
-                        )}
                       </div>
                       <div className="text-xs text-[#4A5159] dark:text-[#9EABB5] mt-0.5">
                         {ev.responded_at ? (

@@ -500,5 +500,11 @@ export const api = {
       method: 'POST',
     });
   },
+
+  async clearAllData() {
+    return request<{ status: string; message: string }>('/api/v1/dev/clear-all', {
+      method: 'POST',
+    });
+  },
 };
 

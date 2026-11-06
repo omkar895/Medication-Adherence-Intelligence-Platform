@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, Clock, Trash2, Shield, Globe, Moon, Sun, Type, Save } from 'lucide-react';
+import { User, Clock, Trash2, Shield, Globe, Moon, Sun, Type, Save, RefreshCw } from 'lucide-react';
 import { api, PatientProfile } from '../services/api';
 
 interface Props {
@@ -17,6 +17,23 @@ export const ProfileSettings: React.FC<Props> = ({ user, onLogout, isDarkMode, o
   const [saving, setSaving] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [deletionStatus, setDeletionStatus] = useState<string | null>(null);
+  const [clearing, setClearing] = useState(false);
+
+  const handleClearAllData = async () => {
+    if (!window.confirm("Wipe all simulated demo records? This will clear fake past events and leave an empty real-time ledger for your real medications.")) return;
+    setClearing(true);
+    try {
+      await api.clearAllData();
+      setStatusMessage("All demo data cleared. Your ledger is now clean and in real-time mode.");
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+    } catch (err: any) {
+      alert(`Clear failed: ${err.message}`);
+    } finally {
+      setClearing(false);
+    }
+  };
 
   useEffect(() => {
     loadProfile();
@@ -216,6 +233,28 @@ export const ProfileSettings: React.FC<Props> = ({ user, onLogout, isDarkMode, o
             >
               <Save className="w-3.5 h-3.5" />
               <span>{saving ? 'Saving Preferences…' : 'Save Preferences'}</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Database Management & Real-time Reset */}
+        <div className="border-t border-[#D9D5CA] dark:border-[#2E363D] pt-6 space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h3 className="text-sm font-semibold text-[#1B1F23] dark:text-[#ECEFF1] flex items-center gap-1.5">
+                <RefreshCw className="w-4 h-4 text-[#0F5C5A] dark:text-[#1EB8B4]" />
+                Live Real-time Ledger Reset
+              </h3>
+              <p className="text-xs text-[#4A5159] dark:text-[#9EABB5] mt-0.5">
+                Wipe all pre-populated synthetic demo entries and switch to an empty, real-time live database.
+              </p>
+            </div>
+            <button
+              onClick={handleClearAllData}
+              disabled={clearing}
+              className="px-3.5 py-2 bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-[#1B1F23] dark:text-[#ECEFF1] border border-neutral-300 dark:border-neutral-600 rounded text-xs font-semibold self-start sm:self-auto transition-colors"
+            >
+              {clearing ? 'Clearing…' : 'Wipe Demo Seed Data'}
             </button>
           </div>
         </div>

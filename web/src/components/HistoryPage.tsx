@@ -259,11 +259,6 @@ export const HistoryPage: React.FC<Props> = ({ medications }) => {
                     <div>
                       <div className="font-semibold text-sm text-[#1B1F23] dark:text-[#ECEFF1] flex items-center gap-2">
                         <span>{ev.medication_name}</span>
-                        {ev.is_synthetic && (
-                          <span className="text-[10px] bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700 px-1 py-0.2 rounded font-mono">
-                            SYNTHETIC
-                          </span>
-                        )}
                       </div>
                       <div className="text-xs text-[#4A5159] dark:text-[#9EABB5] mt-0.5">
                         {ev.responded_at ? (

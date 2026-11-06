@@ -21,7 +21,16 @@ export const CaregiverPortal: React.FC = () => {
 
   useEffect(() => {
     loadCaregiverState();
-  }, []);
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        loadCaregiverState();
+        if (selectedPatientId) {
+          loadSharedData(selectedPatientId, true);
+        }
+      }
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [selectedPatientId]);
 
   useEffect(() => {
     if (selectedPatientId) {
@@ -44,8 +53,8 @@ export const CaregiverPortal: React.FC = () => {
     }
   };
 
-  const loadSharedData = async (patientId: string) => {
-    setLoadingData(true);
+  const loadSharedData = async (patientId: string, silent = false) => {
+    if (!silent) setLoadingData(true);
     try {
       const [meds, scheds, status, hist, dash] = await Promise.allSettled([
         api.getSharedMedications(patientId),
@@ -61,7 +70,7 @@ export const CaregiverPortal: React.FC = () => {
       setHistory(hist.status === 'fulfilled' ? hist.value : []);
       setDashboard(dash.status === 'fulfilled' ? dash.value : null);
     } finally {
-      setLoadingData(false);
+      if (!silent) setLoadingData(false);
     }
   };
 
@@ -101,9 +110,15 @@ export const CaregiverPortal: React.FC = () => {
               <ShieldCheck className="w-5 h-5" />
             </span>
             <div>
-              <h2 className="text-lg font-semibold text-[#1B1F23] dark:text-[#ECEFF1]">
-                Caregiver Authorized Portal
-              </h2>
+              <div className="flex items-center gap-2">
+                <h2 className="text-lg font-semibold text-[#1B1F23] dark:text-[#ECEFF1]">
+                  Caregiver Authorized Portal
+                </h2>
+                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                  Real-time Sync
+                </span>
+              </div>
               <p className="text-xs text-[#4A5159] dark:text-[#9EABB5]">
                 Read-only access governed strictly by real-time patient consent grants.
               </p>
@@ -258,11 +273,6 @@ export const CaregiverPortal: React.FC = () => {
                       <span className="font-semibold text-sm text-[#1B1F23] dark:text-[#ECEFF1]">{m.display_name}</span>
                       <span className="ml-2 text-xs text-[#4A5159] dark:text-[#9EABB5] capitalize">({m.form})</span>
                     </div>
-                    {m.is_synthetic && (
-                      <span className="text-[10px] bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 px-1.5 py-0.5 rounded font-mono font-medium">
-                        Synthetic
-                      </span>
-                    )}
                   </div>
                 ))
               )}

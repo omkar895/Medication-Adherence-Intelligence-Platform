@@ -95,11 +95,18 @@ export function App() {
     };
   }, []);
 
-  // Fetch initial data when user changes
+  // Fetch data on login & setup real-time background sync polling
   useEffect(() => {
-    if (user) {
-      loadData();
-    }
+    if (!user) return;
+    loadData();
+
+    const pollInterval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        loadData(true);
+      }
+    }, 4000);
+
+    return () => clearInterval(pollInterval);
   }, [user]);
 
   // Real-time dose reminder checker
@@ -161,9 +168,9 @@ export function App() {
     }
   };
 
-  const loadData = async () => {
+  const loadData = async (silent = false) => {
     if (!user) return;
-    setLoading(true);
+    if (!silent) setLoading(true);
     setPendingSyncCount(getOfflineQueue().length);
     try {
       if (user.role === 'patient') {
@@ -182,7 +189,7 @@ export function App() {
     } catch (err: any) {
       console.error('Failed to load application data', err);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
@@ -257,9 +264,6 @@ export function App() {
 
   return (
     <div className="min-h-screen flex flex-col bg-[#F7F5F0] dark:bg-[#121416] text-[#1B1F23] dark:text-[#ECEFF1] transition-colors pb-16 sm:pb-0">
-      {/* Top Banner: Synthetic Demo Disclosure */}
-      <SyntheticBanner />
-
       {/* Persistent Sync Status Line */}
       <SyncStatusBar
         status={syncStatus}

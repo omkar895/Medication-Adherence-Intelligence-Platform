@@ -79,3 +79,4 @@ export const ActiveMedicationAlert: React.FC<Props> = ({
     </div>
   );
 };
+

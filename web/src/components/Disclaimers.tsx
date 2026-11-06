@@ -1,21 +1,7 @@
 import React from 'react';
 import { AlertCircle, ShieldCheck, Wifi, WifiOff, RefreshCw } from 'lucide-react';
 
-export const SyntheticBanner: React.FC = () => (
-  <div className="bg-amber-50 dark:bg-amber-950/40 border-b border-amber-200 dark:border-amber-800/80 px-4 py-1.5 text-xs text-amber-900 dark:text-amber-200 flex items-center justify-between transition-colors">
-    <div className="flex items-center gap-2">
-      <span className="font-semibold uppercase tracking-wider text-[10px] bg-amber-200/80 dark:bg-amber-900/60 text-amber-950 dark:text-amber-200 px-1.5 py-0.5 rounded font-mono border border-amber-300 dark:border-amber-700">
-        SYNTHETIC DATA
-      </span>
-      <span className="text-[11px] leading-snug">
-        All medications, times, and adherence records in this session are generated for demonstration.
-      </span>
-    </div>
-    <span className="hidden sm:inline text-amber-800 dark:text-amber-300 font-mono text-[11px]">
-      PS-05 Compliant
-    </span>
-  </div>
-);
+export const SyntheticBanner: React.FC = () => null;
 
 export const ClinicalSafetyFooter: React.FC = () => (
   <footer className="mt-14 mb-20 border-t border-[#D9D5CA] dark:border-[#2E363D] pt-5 px-4 text-center text-xs text-[#4A5159] dark:text-[#9EABB5] space-y-1.5 transition-colors">

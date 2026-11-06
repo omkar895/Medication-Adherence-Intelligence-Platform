@@ -83,6 +83,22 @@ def trigger_reseed(db: Session = Depends(get_db)):
     sweep_unresolved_events(db)
     return {"status": "success", "message": "Synthetic demo dataset reseeded"}
 
+@app.post("/api/v1/dev/clear-all")
+def clear_all_data(db: Session = Depends(get_db)):
+    """Wipes all demo/synthetic records for clean real-time clinical use."""
+    db.query(DoseEventCorrection).delete()
+    db.query(ReminderAttempt).delete()
+    db.query(CaregiverNotification).delete()
+    db.query(DoseEvent).delete()
+    db.query(Insight).delete()
+    db.query(ConsentGrant).delete()
+    db.query(Invitation).delete()
+    db.query(CareRelationship).delete()
+    db.query(ScheduleVersion).delete()
+    db.query(Medication).delete()
+    db.commit()
+    return {"status": "success", "message": "Demo data wiped. Real-time ledger is clean."}
+
 # Serve frontend production bundle if built
 import os
 from fastapi.staticfiles import StaticFiles

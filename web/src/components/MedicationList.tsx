@@ -245,11 +245,6 @@ export const MedicationList: React.FC<Props> = ({ medications, onRefresh }) => {
                     <span className="px-2 py-0.5 bg-neutral-100 dark:bg-neutral-800 text-[#4A5159] dark:text-[#9EABB5] rounded text-xs capitalize">
                       {med.form || 'tablet'}
                     </span>
-                    {med.is_synthetic && (
-                      <span className="text-[10px] font-semibold tracking-wider text-amber-900 dark:text-amber-200 bg-amber-100 dark:bg-amber-950 border border-amber-300 dark:border-amber-700 px-1.5 py-0.2 rounded uppercase">
-                        Synthetic
-                      </span>
-                    )}
                   </div>
                   <div className="flex items-center gap-2 text-xs text-[#1E6B3A] dark:text-[#2FA85C] mt-1 font-medium">
                     <ShieldCheck className="w-3.5 h-3.5" />

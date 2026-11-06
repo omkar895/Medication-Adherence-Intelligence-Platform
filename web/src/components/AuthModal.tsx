@@ -119,10 +119,10 @@ export const AuthModal: React.FC<Props> = ({ onSuccess }) => {
           </p>
         </div>
 
-        {/* 1-Click Interactive Demo Access */}
+        {/* Quick Access Section */}
         <div className="p-4 bg-teal-50 dark:bg-teal-950/50 border-b border-teal-200 dark:border-teal-800 text-xs space-y-2">
           <span className="font-semibold text-[#0F5C5A] dark:text-[#1EB8B4] block uppercase tracking-wider text-[10px]">
-            ⚡ 1-Click Interactive Demo (Instant Access):
+            ⚡ Quick Direct Access (Live Real-time Mode):
           </span>
           <div className="grid grid-cols-2 gap-2">
             <button
@@ -130,14 +130,14 @@ export const AuthModal: React.FC<Props> = ({ onSuccess }) => {
               disabled={loading}
               className="py-2 px-3 bg-white dark:bg-[#121416] border border-[#0F5C5A] dark:border-[#1EB8B4] hover:bg-teal-50 dark:hover:bg-teal-950 text-[#0F5C5A] dark:text-[#1EB8B4] rounded font-medium flex items-center justify-center gap-1.5 shadow-xs transition-colors"
             >
-              <User className="w-3.5 h-3.5" /> Patient Demo
+              <User className="w-3.5 h-3.5" /> Patient Portal
             </button>
             <button
               onClick={() => handleDemoLogin('caregiver')}
               disabled={loading}
               className="py-2 px-3 bg-white dark:bg-[#121416] border border-[#0F5C5A] dark:border-[#1EB8B4] hover:bg-teal-50 dark:hover:bg-teal-950 text-[#0F5C5A] dark:text-[#1EB8B4] rounded font-medium flex items-center justify-center gap-1.5 shadow-xs transition-colors"
             >
-              <HeartHandshake className="w-3.5 h-3.5" /> Caregiver Demo
+              <HeartHandshake className="w-3.5 h-3.5" /> Caregiver Portal
             </button>
           </div>
         </div>
@@ -224,8 +224,29 @@ export const AuthModal: React.FC<Props> = ({ onSuccess }) => {
           </div>
 
           {error && (
-            <div className="p-2.5 bg-rose-50 dark:bg-rose-950/60 text-rose-800 dark:text-rose-200 border border-rose-200 dark:border-rose-800 rounded text-xs leading-relaxed">
-              {error}
+            <div className="p-3 bg-rose-50 dark:bg-rose-950/60 text-rose-800 dark:text-rose-200 border border-rose-200 dark:border-rose-800 rounded text-xs leading-relaxed space-y-2">
+              <div className="flex items-start gap-1.5">
+                <ShieldAlert className="w-4 h-4 text-rose-600 dark:text-rose-400 flex-shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  {error.includes('unauthorized-domain') ? (
+                    <span>
+                      <strong>Firebase Domain Restriction:</strong> Firebase Auth blocks requests from <code className="font-mono bg-rose-100 dark:bg-rose-900 px-1 py-0.5 rounded">127.0.0.1</code>. Please switch your URL to <code className="font-mono bg-rose-100 dark:bg-rose-900 px-1 py-0.5 rounded">localhost</code>.
+                    </span>
+                  ) : (
+                    <span>{error}</span>
+                  )}
+                </div>
+              </div>
+              {(error.includes('unauthorized-domain') || isIpAddress) && (
+                <button
+                  type="button"
+                  onClick={handleSwitchToLocalhost}
+                  className="w-full py-2 bg-rose-200 hover:bg-rose-300 dark:bg-rose-900 dark:hover:bg-rose-800 text-rose-950 dark:text-rose-100 rounded text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors shadow-xs"
+                >
+                  <span>Switch URL to http://localhost:{window.location.port || '8000'}</span>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
           )}
 
