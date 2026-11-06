@@ -273,3 +273,4 @@ export const InsightsDashboard: React.FC<Props> = ({ insights, onRefresh }) => {
     </div>
   );
 };
+

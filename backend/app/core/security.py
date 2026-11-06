@@ -35,12 +35,36 @@ def create_access_token(subject: str, role: str, expires_delta: datetime.timedel
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
     return encoded_jwt
 
+def decode_firebase_token(token: str) -> dict | None:
+    try:
+        unverified = jwt.decode(token, options={"verify_signature": False})
+        iss = unverified.get("iss", "")
+        if "securetoken.google.com" in iss or "firebase" in unverified:
+            return unverified
+        return None
+    except Exception:
+        return None
+
 def decode_access_token(token: str) -> dict | None:
+    # 1. Try local HS256 secret
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         return payload
     except jwt.PyJWTError:
-        return None
+        pass
+
+    # 2. Try Firebase ID Token
+    firebase_payload = decode_firebase_token(token)
+    if firebase_payload:
+        return {
+            "sub": firebase_payload.get("sub"),
+            "firebase": True,
+            "email": firebase_payload.get("email"),
+            "name": firebase_payload.get("name"),
+            "role": "patient",
+        }
+    return None
 
 def hash_token(raw_token: str) -> str:
     return hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
+

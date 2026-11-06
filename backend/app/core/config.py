@@ -13,3 +13,4 @@ class Settings(BaseModel):
     SIMULATION_ENABLED: bool = True
 
 settings = Settings()
+

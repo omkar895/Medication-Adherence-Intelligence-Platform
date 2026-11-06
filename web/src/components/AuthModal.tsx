@@ -1,6 +1,13 @@
 import React, { useState } from 'react';
-import { Shield, User, HeartHandshake } from 'lucide-react';
+import { User, HeartHandshake, LogIn } from 'lucide-react';
 import { api, User as UserType } from '../services/api';
+import {
+  auth,
+  googleProvider,
+  signInWithPopup,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+} from '../services/firebase';
 
 interface Props {
   onSuccess: (user: UserType) => void;
@@ -15,6 +22,7 @@ export const AuthModal: React.FC<Props> = ({ onSuccess }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // 1-Click Demo Login (local synthetic data)
   const handleDemoLogin = async (targetRole: 'patient' | 'caregiver') => {
     setLoading(true);
     setError(null);
@@ -29,20 +37,50 @@ export const AuthModal: React.FC<Props> = ({ onSuccess }) => {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // Firebase Google Sign In
+  const handleGoogleSignIn = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await signInWithPopup(auth, googleProvider);
+      const idToken = await result.user.getIdToken();
+      const user = await api.firebaseLogin(idToken, role);
+      onSuccess(user);
+    } catch (err: any) {
+      setError(err.message || 'Firebase Google Sign-In failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Firebase Email / Password Sign In or Registration
+  const handleFirebaseEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
     try {
-      let user: UserType;
+      let userCredential;
       if (isRegister) {
-        user = await api.register(name, email, password, role);
+        userCredential = await createUserWithEmailAndPassword(auth, email, password);
       } else {
-        user = await api.login(email, password);
+        userCredential = await signInWithEmailAndPassword(auth, email, password);
       }
+      const idToken = await userCredential.user.getIdToken();
+      const user = await api.firebaseLogin(idToken, role);
       onSuccess(user);
     } catch (err: any) {
-      setError(err.message || 'Authentication failed');
+      // If Firebase auth fails (e.g., auth domain restriction or offline), fallback gracefully to local backend auth
+      try {
+        let fallbackUser: UserType;
+        if (isRegister) {
+          fallbackUser = await api.register(name || email.split('@')[0], email, password, role);
+        } else {
+          fallbackUser = await api.login(email, password);
+        }
+        onSuccess(fallbackUser);
+      } catch {
+        setError(err.message || 'Authentication failed');
+      }
     } finally {
       setLoading(false);
     }
@@ -59,10 +97,10 @@ export const AuthModal: React.FC<Props> = ({ onSuccess }) => {
           </p>
         </div>
 
-        {/* Quick Demo Access Bar */}
+        {/* 1-Click Interactive Demo Access */}
         <div className="p-4 bg-teal-50 border-b border-teal-200 text-xs space-y-2">
           <span className="font-semibold text-[#0F5C5A] block uppercase tracking-wider text-[10px]">
-            ⚡ 1-Click Interactive Demo Access:
+            ⚡ 1-Click Interactive Demo:
           </span>
           <div className="grid grid-cols-2 gap-2">
             <button
@@ -82,8 +120,44 @@ export const AuthModal: React.FC<Props> = ({ onSuccess }) => {
           </div>
         </div>
 
-        {/* Form */}
+        {/* Firebase Authentication Section */}
         <div className="p-6 space-y-4">
+          <div className="space-y-3">
+            <button
+              onClick={handleGoogleSignIn}
+              disabled={loading}
+              className="w-full py-2.5 px-4 bg-white border border-neutral-300 hover:bg-neutral-50 rounded text-xs font-semibold text-neutral-800 flex items-center justify-center gap-2 shadow-xs transition-colors"
+            >
+              <svg className="w-4 h-4" viewBox="0 0 24 24">
+                <path
+                  fill="#4285F4"
+                  d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                />
+                <path
+                  fill="#34A853"
+                  d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                />
+                <path
+                  fill="#FBBC05"
+                  d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+                />
+                <path
+                  fill="#EA4335"
+                  d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+                />
+              </svg>
+              <span>Continue with Google (Firebase)</span>
+            </button>
+
+            <div className="relative flex py-1 items-center">
+              <div className="flex-grow border-t border-neutral-200" />
+              <span className="flex-shrink mx-3 text-[11px] text-[#4A5159] uppercase tracking-wider">
+                or email
+              </span>
+              <div className="flex-grow border-t border-neutral-200" />
+            </div>
+          </div>
+
           <div className="flex border-b border-[#D9D5CA]">
             <button
               onClick={() => setIsRegister(false)}
@@ -99,7 +173,7 @@ export const AuthModal: React.FC<Props> = ({ onSuccess }) => {
                 isRegister ? 'border-b-2 border-[#0F5C5A] text-[#0F5C5A]' : 'text-[#4A5159]'
               }`}
             >
-              Create Account
+              Register
             </button>
           </div>
 
@@ -109,7 +183,7 @@ export const AuthModal: React.FC<Props> = ({ onSuccess }) => {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-3">
+          <form onSubmit={handleFirebaseEmailAuth} className="space-y-3">
             {isRegister && (
               <>
                 <div>
@@ -173,14 +247,15 @@ export const AuthModal: React.FC<Props> = ({ onSuccess }) => {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-2.5 bg-[#0F5C5A] hover:bg-teal-900 text-white rounded text-sm font-medium transition-colors shadow-sm disabled:opacity-50 mt-4"
+              className="w-full py-2.5 bg-[#0F5C5A] hover:bg-teal-900 text-white rounded text-sm font-medium transition-colors shadow-sm disabled:opacity-50 mt-4 flex items-center justify-center gap-1.5"
             >
-              {loading ? 'Authenticating…' : isRegister ? 'Register Account' : 'Sign In'}
+              <LogIn className="w-4 h-4" />
+              <span>{loading ? 'Authenticating…' : isRegister ? 'Register with Firebase' : 'Sign In with Firebase'}</span>
             </button>
           </form>
 
           <p className="text-[11px] text-[#4A5159] text-center pt-2">
-            Protected with role-based access control. All sessions are encrypted.
+            Firebase Authentication enabled with server-enforced role authorization.
           </p>
         </div>
       </div>

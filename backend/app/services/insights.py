@@ -90,3 +90,4 @@ def evaluate_r1_insights(patient_id: str, db: Session) -> list[Insight]:
         .filter(Insight.patient_id == patient_id, Insight.dismissed_at.is_(None))
         .all()
     )
+

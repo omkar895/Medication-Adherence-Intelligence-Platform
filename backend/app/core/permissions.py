@@ -26,7 +26,33 @@ def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
     user_id = payload["sub"]
-    user = db.query(User).filter(User.id == user_id).first()
+    if payload.get("firebase"):
+        email = payload.get("email")
+        user = (
+            db.query(User)
+            .filter((User.auth_subject == f"firebase:{user_id}") | (User.email == email))
+            .first()
+        )
+        if not user:
+            # Auto-provision new Firebase user
+            display_name = payload.get("name") or (email.split("@")[0] if email else "Patient User")
+            user = User(
+                auth_subject=f"firebase:{user_id}",
+                display_name=display_name,
+                email=email,
+                role="patient",
+                locale="en",
+                password_hash="FIREBASE_MANAGED_AUTH",
+            )
+            db.add(user)
+            db.flush()
+            profile = PatientProfile(user_id=user.id)
+            db.add(profile)
+            db.commit()
+            db.refresh(user)
+    else:
+        user = db.query(User).filter(User.id == user_id).first()
+
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -84,3 +110,4 @@ def check_caregiver_consent(
         )
     
     return grant
+

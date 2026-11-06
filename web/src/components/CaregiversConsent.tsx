@@ -285,3 +285,4 @@ export const CaregiversConsent: React.FC<Props> = ({ consents, pendingInvitation
     </div>
   );
 };
+

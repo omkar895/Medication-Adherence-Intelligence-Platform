@@ -68,3 +68,4 @@ def request_account_deletion(
     db.add(audit)
     db.commit()
     return {"message": "Account deletion request received and scheduled for processing."}
+

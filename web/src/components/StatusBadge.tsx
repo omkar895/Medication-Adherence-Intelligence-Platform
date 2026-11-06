@@ -46,3 +46,4 @@ export const StatusBadge: React.FC<Props> = ({ status, isLate }) => {
       );
   }
 };
+

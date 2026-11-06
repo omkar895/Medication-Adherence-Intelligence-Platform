@@ -176,3 +176,4 @@ def get_shared_dashboard(
         sync_pending_count=0,
         small_sample_warning=(0 < S < 10),
     )
+

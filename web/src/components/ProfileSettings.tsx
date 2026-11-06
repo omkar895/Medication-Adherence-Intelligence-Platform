@@ -146,3 +146,4 @@ export const ProfileSettings: React.FC<Props> = ({ user, onLogout }) => {
     </div>
   );
 };
+

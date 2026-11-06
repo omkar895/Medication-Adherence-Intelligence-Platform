@@ -73,3 +73,4 @@ def get_diagnostics(
         "max_repeats": reminder_prefs.get("max_repeats", 3),
         "timezone": profile.timezone if profile else "Asia/Kolkata",
     }
+

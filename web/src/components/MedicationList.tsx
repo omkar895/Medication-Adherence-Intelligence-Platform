@@ -418,3 +418,4 @@ export const MedicationList: React.FC<Props> = ({ medications, onRefresh }) => {
     </div>
   );
 };
+

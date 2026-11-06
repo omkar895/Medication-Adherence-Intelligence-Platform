@@ -65,3 +65,4 @@ def generate_events_for_schedule(
                 db.add(event)
     
     db.commit()
+

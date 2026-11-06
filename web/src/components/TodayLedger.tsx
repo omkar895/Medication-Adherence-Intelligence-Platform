@@ -242,3 +242,4 @@ export const TodayLedger: React.FC<Props> = ({ events, onRefresh, loading }) => 
     </div>
   );
 };
+

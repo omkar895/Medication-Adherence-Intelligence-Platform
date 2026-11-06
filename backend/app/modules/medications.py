@@ -204,3 +204,4 @@ def archive_medication(
         .first()
     )
     return map_medication_read(med, sched)
+

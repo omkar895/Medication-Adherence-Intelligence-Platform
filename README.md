@@ -120,3 +120,4 @@ python -m pytest backend/tests/test_all.py -v
 3. **Transparent denominators**: All rates display $S, T, N, U$; when $S=0$, "No scheduled doses" is displayed.
 4. **Immediate revocation**: Caregiver permissions are checked against the database on every request, ensuring instant revocation.
 5. **Neutral copy**: Zero guilt or streak pressure; medical questions are directed to clinicians or pharmacists.
+

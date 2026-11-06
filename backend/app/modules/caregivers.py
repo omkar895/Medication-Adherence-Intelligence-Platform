@@ -382,3 +382,4 @@ def list_caregiver_notifications(
         )
         for n in notifs
     ]
+

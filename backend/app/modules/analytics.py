@@ -216,3 +216,4 @@ def insight_feedback(
     insight.useful = req.useful
     db.commit()
     return {"message": "Feedback recorded", "useful": req.useful}
+

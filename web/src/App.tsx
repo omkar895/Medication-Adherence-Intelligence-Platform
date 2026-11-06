@@ -22,6 +22,7 @@ import {
   clearOfflineQueue,
 } from './services/api';
 import { AuthModal } from './components/AuthModal';
+import { firebaseSignOut, auth } from './services/firebase';
 import { TodayLedger } from './components/TodayLedger';
 import { MedicationList } from './components/MedicationList';
 import { InsightsDashboard } from './components/InsightsDashboard';
@@ -127,7 +128,12 @@ export function App() {
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await firebaseSignOut(auth);
+    } catch {
+      // ignore
+    }
     clearStoredAuth();
     setUser(null);
   };

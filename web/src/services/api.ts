@@ -206,6 +206,25 @@ export const api = {
     return user;
   },
 
+  async firebaseLogin(idToken: string, role: string = 'patient') {
+    const data = await request<{ access_token: string; user_id: string; display_name: string; role: 'patient' | 'caregiver' | 'admin' }>(
+      '/api/v1/auth/firebase-login',
+      {
+        method: 'POST',
+        body: JSON.stringify({ id_token: idToken, role }),
+      }
+    );
+    const user: User = {
+      id: data.user_id,
+      display_name: data.display_name,
+      email: null,
+      role: data.role,
+      locale: 'en',
+    };
+    setStoredAuth(data.access_token, user);
+    return user;
+  },
+
   async getMe(): Promise<User> {
     return request<User>('/api/v1/auth/me');
   },
@@ -388,3 +407,4 @@ export const api = {
     });
   },
 };
+

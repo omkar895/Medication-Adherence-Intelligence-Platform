@@ -13,6 +13,10 @@ class UserLogin(BaseModel):
     email: str
     password: str
 
+class FirebaseLoginRequest(BaseModel):
+    id_token: str
+    role: str = "patient"
+
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"

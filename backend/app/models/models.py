@@ -250,3 +250,4 @@ class AuditEvent(Base):
     outcome = Column(String(50), nullable=False)  # success, denied, failure
 
     actor = relationship("User", back_populates="audit_events")
+
