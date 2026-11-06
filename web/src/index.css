@@ -1,0 +1,28 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --color-paper: #F7F5F0;
+    --color-surface: #FFFFFF;
+    --color-ink: #1B1F23;
+    --color-ink-muted: #4A5159;
+    --color-rule: #D9D5CA;
+    --color-accent: #0F5C5A;
+    --color-status-taken: #1E6B3A;
+    --color-status-not-taken: #8A2D2D;
+    --color-status-unresolved: #7A5A00;
+    --color-status-snoozed: #3B4A8A;
+  }
+
+  body {
+    background-color: var(--color-paper);
+    color: var(--color-ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+  }
+
+  .font-mono-numbers {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  }
+}
